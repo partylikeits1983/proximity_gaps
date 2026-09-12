@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "rs-f17-k3-n8",
+  "description": "An exact two-candidate ambiguity immediately beyond the unique-decoding radius.",
+  "field": { "kind": "prime", "modulus": "17" },
+  "evaluationDomain": ["0", "1", "2", "3", "4", "5", "6", "7"],
+  "coefficients": ["3", "2", "1"],
+  "codeword": ["3", "6", "11", "1", "10", "4", "0", "15"],
+  "alternativeCoefficients": ["3", "1", "2"],
+  "alternativeCodeword": ["3", "6", "13", "7", "5", "7", "13", "6"],
+  "received": ["3", "6", "13", "7", "5", "4", "0", "15"],
+  "radius": 3,
+  "expectedListSize": 2,
+  "provenance": { "method": "exhaustive-enumeration", "formallyVerified": false }
+}

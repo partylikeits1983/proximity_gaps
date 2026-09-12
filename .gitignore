@@ -1,0 +1,9 @@
+/target
+/web/node_modules/
+/web/dist/
+/web/coverage/
+/web/.vercel/
+/web/test-results/
+/web/playwright-report/
+*.tsbuildinfo
+.DS_Store
