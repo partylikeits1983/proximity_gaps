@@ -86,11 +86,7 @@ export default function App() {
             <span className="brand-subtitle">VISUAL LAB</span>
           </div>
         </a>
-        <div className="sidebar-intro">
-          A field guide to
-          <br />
-          error-correcting codes.
-        </div>
+        <div className="sidebar-intro">Reed Solomon codes visualized</div>
         <nav aria-label="Experiments">
           {[...new Set(lessons.map((item) => item.group))].map((group) => (
             <div className="nav-group" key={group}>
@@ -142,12 +138,24 @@ export default function App() {
           <div className="chapter-line">
             <span className="chapter-tag">EXPERIMENT {lesson.number}</span>
             <span className="chapter-rule" />
-            <span className="interactive-label">
-              <i /> Interactive exploration
-            </span>
           </div>
           <div className="parameter-strip">
-            {binary ? (
+            {lesson.parameterMode === 'mca' ? (
+              <>
+                <span>
+                  <MathText>{'\\mathbb F_5^5'}</MathText>
+                  <span className="parameter-percent">exact toy model</span>
+                </span>
+                <span>
+                  <MathText>{'k=2,\\ n=5'}</MathText>
+                </span>
+                <span>25 codewords</span>
+                <span>
+                  <MathText>{'\\gamma \\in \\mathbb F_5'}</MathText>
+                  <span className="parameter-percent">5 equally likely choices</span>
+                </span>
+              </>
+            ) : binary ? (
               <>
                 <span className="parameter-field">
                   <MathText>{'\\{0,1\\}^5'}</MathText>
@@ -195,11 +203,13 @@ export default function App() {
                 ) : (
                   <span className="parameter-polynomial">
                     <span className="muted">
-                      {proofLesson
-                        ? "Prover's polynomial"
-                        : lessonId === 'decoding-radius' || lessonId === 'hamming-distance'
-                          ? 'Reference polynomial'
-                          : 'Polynomial'}
+                      {lessonId === 'interleaved-rs'
+                        ? 'First row'
+                        : proofLesson
+                          ? "Prover's polynomial"
+                          : lessonId === 'decoding-radius' || lessonId === 'hamming-distance'
+                            ? 'Reference polynomial'
+                            : 'Polynomial'}
                     </span>
                     <MathText>{'p(X)=' + polynomialTex(e.coefficients)}</MathText>
                   </span>

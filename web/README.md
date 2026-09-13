@@ -30,14 +30,16 @@ Use `pnpm run format` to format the frontend's TypeScript, styles, configuration
 
 ## Implemented experiments
 
-| Step | Experiment           | Interactions                                                                                                                       |
-| ---- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 01   | Tape to polynomial   | Edit coefficients, follow aligned arrows to their terms, add/delete slots, and highlight a term in the sum.                        |
-| 02   | Build a codeword     | Change the rate or evaluation count; inspect modular evaluation arithmetic and the resulting output tape.                          |
-| 03   | Measure errors       | Edit aligned reference/received rows; each unequal column contributes one to Δ. Inspect δ and a compact distance diagram.          |
-| 04   | Grow a Hamming ball  | Explore all 32 binary words of length five, change the center and radius, and optionally highlight the repetition code.            |
-| 05   | List decoding        | Read the guided explainer, compare exact one/two-candidate examples, grow the radius, and inspect every nearby polynomial.         |
-| 06   | From codes to proofs | Edit trace evaluations, recover the polynomial with IFFT/Lagrange interpolation, extend it with FFT, and inspect a local FRI fold. |
+| Step | Experiment           | Interactions                                                                                                                                        |
+| ---- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01   | Tape to polynomial   | Edit coefficients, follow aligned arrows to their terms, add/delete slots, and highlight a term in the sum.                                         |
+| 02   | Build a codeword     | Change the rate or evaluation count; inspect modular evaluation arithmetic and the resulting output tape.                                           |
+| 03   | Measure errors       | Edit aligned reference/received rows; each unequal column contributes one to Δ. Inspect δ and a compact distance diagram.                           |
+| 04   | Grow a Hamming ball  | Explore all 32 binary words of length five, change the center and radius, and optionally highlight the repetition code.                             |
+| 05   | List decoding        | Read the guided explainer, compare exact one/two-candidate examples, grow the radius, and inspect every nearby polynomial.                          |
+| 06   | Interleaved RS       | Edit two to four messages; follow each polynomial into an evaluation row. Inspect column tuples and compare shared versus separate error positions. |
+| 07   | MCA                  | Grow codeword-centered balls along an affine family, count all challenges, and inspect exact same-support explanations or failures.                 |
+| 08   | From codes to proofs | Edit trace evaluations, recover the polynomial with IFFT/Lagrange interpolation, extend it with FFT, and inspect a local FRI fold.                  |
 
 The default RS example uses the prime field F₁₇, coefficients `[3, 2, 1]`, and evaluation points `0…7`. Its codeword is `[3, 6, 11, 1, 10, 4, 0, 15]`. Its minimum distance is 6 and its guaranteed unique-decoding radius is 2.
 
@@ -52,6 +54,14 @@ Experiments share the current polynomial and received word. Changing coefficient
 The four views distinguish the prover's interpolation and extension work from the verifier's local folding relation. Change the first folded entry, then inspect different query pairs to see a failure or a missed alteration. This computes exact field arithmetic; it does not implement Merkle authentication, Fiat–Shamir, multiple FRI rounds, computation constraints, or zero-knowledge masking. A passing local check is not a complete proof. Fields or message lengths without a suitable FFT extension offer an explicit F₁₇ preset.
 
 **Copy link** preserves the full experiment, including the field, message, received word, radius, and deterministic seed. Browser back/forward navigation restores the settings in those URLs. There is no browser-storage dependency.
+
+**Interleaved RS** treats a column as one symbol in F_q^ℓ. The first row shares the earlier polynomial; other rows have independent editable messages with the same k slots. “Same column” versus “Different columns” keeps one changed entry per row but changes the column distance. It compares the reference and received matrices, not distance to the nearest interleaved codeword.
+
+**MCA** has its own exact toy model: RS over F₅, k=2, n=5, and 25 codewords. For each of the five challenges γ, it forms u₀+γu₁. The green ball is centered on a selectable valid codeword, while the counts inspect all codewords. The parameter strip shows all challenge values; it does not claim to be a Euclidean embedding. A circle’s area is never used as probability.
+
+The MCA failure event requires a set T of at least n−E positions where the combination agrees with a codeword but at least one input has no codeword explanation on the same T. This follows [WHIR §4.2, Definition 4.9](https://eprint.iacr.org/2024/1586), PDF retrieved September 13, 2026. Testing full candidate agreement sets is sufficient; tests independently check all 32 possible supports. Radius endpoints are finite-model experiments, not claims about an analytic theorem’s admissible range.
+
+The growing-radius preset has proximity/MCA counts 0/0, 2/2, and 5/4 (out of five) at radii 0, 1, and 2. A line inside the code gives proximity 5/5 and MCA failure 0/5. These are exact fractions for selected inputs, not worst-case soundness bounds. The code alphabet and challenge field remain distinct concepts.
 
 ## Deploy on Vercel
 
@@ -82,6 +92,7 @@ web/
 │   ├── main.tsx                Application entry and bundled fonts
 │   ├── core/math.ts            Pure small-field math and bounded enumeration
 │   ├── core/search.ts          Exact non-enumeration cases and explicit unknown results
+│   ├── core/agreement.ts       Interleaving, column supports, and exact MCA enumeration
 │   ├── core/stark.ts           Lagrange interpolation, FFT/IFFT, LDE, and FRI pair arithmetic
 │   ├── state/
 │   │   ├── model.ts            Experiment types, validation, URL format
@@ -100,7 +111,7 @@ web/
 
 Add an experiment by creating a lesson module, adding its stable ID to `LESSON_IDS` in `src/state/model.ts`, and registering its metadata and lazy import in `src/lessons/registry.ts`. The shell automatically supplies navigation, grouping, step headings, note access, and previous/next links. Add the mathematics to `core/` rather than embedding it in layout code.
 
-The notes remain ordinary Markdown in [notes/](../notes/). The notes dialog renders the relevant section of [grand_list_decoding.md](../notes/grand_list_decoding.md), or [codes_to_proofs.md](../notes/codes_to_proofs.md) for the STARK lesson, with math support and a download of the source. Mermaid blocks in the source are displayed as code.
+The notes remain ordinary Markdown in [notes/](../notes/). The notes dialog renders the relevant section of [grand_list_decoding.md](../notes/grand_list_decoding.md), [codes_to_proofs.md](../notes/codes_to_proofs.md) for the STARK lesson, or [reed-solomon-soundness.md](../notes/agentic_notes/reed-solomon-soundness.md) for the agreement lessons, with math support and a download of the source. Mermaid blocks in the source are displayed as code.
 
 ## Mathematical conventions and limits
 
@@ -119,28 +130,40 @@ The notes remain ordinary Markdown in [notes/](../notes/). The notes dialog rend
 
 ## Planned features
 
-These are future experiments, separate from the six implemented lessons. Selecting arbitrary interpolation points, understanding minimum distance through roots, and following FRI through multiple rounds are the next priorities.
+These are future experiments, separate from the eight implemented lessons. The new subject-based notes have a detailed [visual sequence and implementation plan](../plans/research-notes-visuals.md).
 
-| Planned visual                 | What the interaction will teach                                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Recover from any k evaluations | Select clean evaluation points and reconstruct the message polynomial; remove one to see the remaining freedom. |
-| FRI across rounds              | Follow linked queries through successive folds, Merkle authentication, and the final degree check.              |
-| From constraints to proximity  | Connect trace constraints, quotient polynomials, and low-degree testing in a complete STARK example.            |
-| Why d = n−k+1                  | Compare two polynomials and relate shared evaluations to the roots of their difference.                         |
+Next from those notes:
 
-| Find the worst received word | Compare a particular list with the maximum list size over all centers in a fully enumerable tiny example. |
-| Rate versus decoding thresholds | Compare unique decoding, Johnson, and capacity benchmarks with their assumptions and finite-length corrections. |
-| Errors versus erasures | Compare unknown corruptions with known missing positions and explore the budget `2e+s ≤ n−k`. |
-| Interleaving | Stack polynomial evaluation tapes and inspect simultaneous column agreement. |
-| Folding | Bundle positions of one evaluation tape and see how the alphabet and Hamming metric change. |
-| Roots-of-unity domains and cosets | Traverse structured evaluation domains and inspect their algebraic relations. |
-| MDS through generator-matrix columns | Select Vandermonde columns and compute their exact finite-field rank. |
-| Higher-order MDS | Inspect intersections of several column spans using verified small examples. |
-| Correlated agreement | Highlight shared agreement coordinates and inspect combinations of words. |
-| Mutual correlated agreement (MCA) | Vary a field parameter and inspect exceptional combinations against the exact sourced definition. |
-| Soundness in bits | Convert stated error bounds into bits with explicit parameters and hypotheses. |
-| Counterexample workbench | Load Rust-generated or formally checked fixtures and inspect their words and agreement sets. |
+| Planned visual                            | What the interaction will teach                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Soundness budgets                         | Plot query bits separately from assumed reduction bounds; reproduce the note’s exact benchmark without calling it whole-protocol security. |
+| Build an interpolant                      | Select monomials, build finite-field constraints, and inspect exact rank, nullity, and a kernel witness.                                   |
+| Hasse derivatives and jets                | Read the local expansion as a coefficient tape and track characteristic-dependent factorials.                                              |
+| Contact and support root mass             | Count vanishing orders on the actual agreement set and inspect the inequality forcing a quotient to vanish.                                |
+| Shared factors and differential equations | See why a nonzero kernel can retain a forbidden factor, and when a derivative equation adds an independent condition.                      |
+| Source support optimization               | Explore interval dependencies and source/counting tradeoffs.                                                                               |
+| First-jet balance                         | Compare the leading-model transition with exact finite discriminants; distinguish it from a certified soundness ceiling.                   |
+| From experiment to certificate            | Connect source, domain, component, and budget obligations, with explicit evidence status.                                                  |
 
-For MCA, [better_codes.md](../notes/better_codes.md) flags its informal definition for verification. Implementing that lesson requires checking the precise definition and quantifiers in the selected version of [WHIR](https://eprint.iacr.org/2024/1586). A measured exceptional fraction for one example must remain distinct from a worst-case theorem.
+Further foundations and STARK visuals:
+
+| Planned visual                       | What the interaction will teach                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Recover from any k evaluations       | Select clean evaluation points and reconstruct the message polynomial; remove one to see the remaining freedom. |
+| FRI across rounds                    | Follow linked queries through successive folds, Merkle authentication, and the final degree check.              |
+| From constraints to proximity        | Connect trace constraints, quotient polynomials, and low-degree testing in a complete STARK example.            |
+| Why d = n−k+1                        | Compare two polynomials and relate shared evaluations to the roots of their difference.                         |
+| Find the worst received word         | Compare a particular list with the maximum list size over all centers in a fully enumerable tiny example.       |
+| Rate versus decoding thresholds      | Compare unique decoding, Johnson, and capacity benchmarks with their assumptions and finite-length corrections. |
+| Errors versus erasures               | Compare unknown corruptions with known missing positions and explore the budget `2e+s ≤ n−k`.                   |
+| Folding                              | Bundle positions of one evaluation tape and see how the alphabet and Hamming metric change.                     |
+| Roots-of-unity domains and cosets    | Traverse structured evaluation domains and inspect their algebraic relations.                                   |
+| MDS through generator-matrix columns | Select Vandermonde columns and compute their exact finite-field rank.                                           |
+| Higher-order MDS                     | Inspect intersections of several column spans using verified small examples.                                    |
+| Correlated agreement                 | Highlight shared agreement coordinates and inspect combinations of words.                                       |
+| Soundness in bits                    | Convert stated error bounds into bits with explicit parameters and hypotheses.                                  |
+| Counterexample workbench             | Load Rust-generated or formally checked fixtures and inspect their words and agreement sets.                    |
+
+Future MCA extensions can compare radius-versus-error profiles, additional challenge distributions, and certified bounds. Any worst-case claim needs a sourced theorem with its hypotheses; the implemented finite examples do not establish one.
 
 The longer design and implementation plan is [plans/rs-visual-lab.md](../plans/rs-visual-lab.md).

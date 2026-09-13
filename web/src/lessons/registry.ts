@@ -10,7 +10,8 @@ export type LessonDefinition = {
   description: string;
   question: string;
   noteSection: string;
-  noteSource?: 'stark';
+  noteSource?: 'stark' | 'soundness';
+  parameterMode?: 'mca';
   component: LazyExoticComponent<ComponentType>;
 };
 
@@ -72,8 +73,33 @@ export const lessons: LessonDefinition[] = [
     component: lazy(() => import('./DecodingRadius')),
   },
   {
-    id: 'codes-to-proofs',
+    id: 'interleaved-rs',
     number: '06',
+    title: 'Interleaved Reed–Solomon codes',
+    shortTitle: 'Interleaved RS',
+    group: 'Agreement & soundness',
+    description: 'Encode each message, then read the matrix one column at a time.',
+    question: 'When does an entire column agree?',
+    noteSection: 'Interleaving and common agreement support',
+    noteSource: 'soundness',
+    component: lazy(() => import('./InterleavedRS')),
+  },
+  {
+    id: 'mutual-correlated-agreement',
+    number: '07',
+    title: 'Mutual correlated agreement',
+    shortTitle: 'MCA',
+    group: 'Agreement & soundness',
+    description: 'Follow an affine line of words and inspect the same agreement positions.',
+    question: 'Can combining rows create a misleading polynomial agreement?',
+    noteSection: 'Mutual correlated agreement',
+    noteSource: 'soundness',
+    parameterMode: 'mca',
+    component: lazy(() => import('./MutualAgreement')),
+  },
+  {
+    id: 'codes-to-proofs',
+    number: '08',
     title: 'From codes to proofs',
     shortTitle: 'From codes to proofs',
     group: 'STARKs',

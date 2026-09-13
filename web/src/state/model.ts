@@ -1,4 +1,5 @@
 import { encode, SUPPORTED_FIELDS } from '../core/math';
+import type { McaSettings } from '../core/agreement';
 
 export const LESSON_IDS = [
   'tape-polynomial',
@@ -6,6 +7,8 @@ export const LESSON_IDS = [
   'hamming-distance',
   'hamming-ball',
   'decoding-radius',
+  'interleaved-rs',
+  'mutual-correlated-agreement',
   'codes-to-proofs',
 ] as const;
 export type LessonId = (typeof LESSON_IDS)[number];
@@ -42,6 +45,13 @@ export type Experiment = {
   repetition: boolean;
   showZero: boolean;
   proof?: ProofSettings;
+  interleaving?: {
+    messages: number[][];
+    errors: number[][];
+    column: number;
+    corrupt: boolean;
+  };
+  mca?: McaSettings;
 };
 
 export function defaultExperiment(q = 17): Experiment {
@@ -74,6 +84,45 @@ export function validExperiment(value: unknown): value is Experiment {
   const s = value as Record<string, unknown>;
   if (!SUPPORTED_FIELDS.includes(s.q as 5 | 7 | 17)) return false;
   const q = s.q as number;
+  if (s.interleaving !== undefined) {
+    if (!s.interleaving || typeof s.interleaving !== 'object') return false;
+    const interleaving = s.interleaving as Record<string, unknown>;
+    if (
+      !Array.isArray(interleaving.messages) ||
+      !integer(interleaving.messages.length, 1, 3) ||
+      !interleaving.messages.every(
+        (row) =>
+          Array.isArray(row) &&
+          integer(row.length, 1, 17) &&
+          row.every((a) => integer(a, 0, q - 1)),
+      ) ||
+      !Array.isArray(interleaving.errors) ||
+      interleaving.errors.length !== interleaving.messages.length + 1 ||
+      !interleaving.errors.every(
+        (row) =>
+          Array.isArray(row) &&
+          row.length <= 17 &&
+          new Set(row).size === row.length &&
+          row.every((x) => integer(x, 0, 16)),
+      ) ||
+      !integer(interleaving.column, 0, 16) ||
+      typeof interleaving.corrupt !== 'boolean'
+    )
+      return false;
+  }
+  if (s.mca !== undefined) {
+    if (!s.mca || typeof s.mca !== 'object') return false;
+    const mca = s.mca as Record<string, unknown>;
+    if (
+      ![mca.u0, mca.u1].every(
+        (row) => Array.isArray(row) && row.length === 5 && row.every((a) => integer(a, 0, 4)),
+      ) ||
+      !integer(mca.radius, 0, 5) ||
+      !integer(mca.gamma, 0, 4) ||
+      !integer(mca.codeword, 0, 24)
+    )
+      return false;
+  }
   if (s.proof !== undefined) {
     if (!s.proof || typeof s.proof !== 'object') return false;
     const proof = s.proof as Record<string, unknown>;

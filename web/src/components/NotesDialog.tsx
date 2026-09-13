@@ -8,6 +8,18 @@ import notes from '../../../notes/grand_list_decoding.md?raw';
 import notesUrl from '../../../notes/grand_list_decoding.md?url';
 import starkNotes from '../../../notes/codes_to_proofs.md?raw';
 import starkNotesUrl from '../../../notes/codes_to_proofs.md?url';
+import soundnessNotes from '../../../notes/agentic_notes/reed-solomon-soundness.md?raw';
+import soundnessNotesUrl from '../../../notes/agentic_notes/reed-solomon-soundness.md?url';
+
+const noteSources = {
+  intro: { text: notes, url: notesUrl, filename: 'grand_list_decoding.md' },
+  stark: { text: starkNotes, url: starkNotesUrl, filename: 'codes_to_proofs.md' },
+  soundness: {
+    text: soundnessNotes,
+    url: soundnessNotesUrl,
+    filename: 'reed-solomon-soundness.md',
+  },
+};
 
 export default function NotesDialog({
   section,
@@ -15,19 +27,16 @@ export default function NotesDialog({
   onClose,
 }: {
   section: string;
-  source?: 'stark';
+  source?: 'stark' | 'soundness';
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const start = notes.indexOf(`## ${section}`);
-  const end = notes.indexOf('\n## ', start + 1);
+  const note = noteSources[source ?? 'intro'];
+  const start = note.text.indexOf(`## ${section}`);
+  const end = note.text.indexOf('\n## ', start + 1);
   const excerpt =
-    source === 'stark'
-      ? starkNotes
-      : start < 0
-        ? notes
-        : notes.slice(start, end < 0 ? undefined : end);
-  const filename = source === 'stark' ? 'codes_to_proofs.md' : 'grand_list_decoding.md';
+    source || start < 0 ? note.text : note.text.slice(start, end < 0 ? undefined : end);
+  const filename = note.filename;
   useEffect(() => {
     const node = dialog.current;
     node?.showModal();
@@ -64,11 +73,7 @@ export default function NotesDialog({
       </div>
       <div className="notes-dialog-footer">
         <span>{filename}</span>
-        <a
-          className="text-button"
-          href={source === 'stark' ? starkNotesUrl : notesUrl}
-          download={filename}
-        >
+        <a className="text-button" href={note.url} download={filename}>
           <Download size={15} /> Download full note
         </a>
       </div>
