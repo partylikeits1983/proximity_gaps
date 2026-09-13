@@ -43,7 +43,7 @@ export function ExperimentProvider({ children }: { children: ReactNode }) {
       const length = Math.max(n, coefficients.length);
       return {
         ...s,
-        notice: 'Message updated. The received word has been restored to the new codeword.',
+        notice: '',
         experiment: {
           ...s.experiment,
           coefficients,
