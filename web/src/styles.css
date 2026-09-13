@@ -148,13 +148,14 @@
     flex-shrink: 0;
     width: 36px;
     height: 36px;
+    padding: 4px;
     background: #e6efe3;
     color: var(--green-dark);
     border: 1px solid #d7e3d1;
     border-radius: 10px;
     display: grid;
     place-items: center;
-    font-size: 13px;
+    font-size: 10px;
   }
   .brand-title {
     display: block;
@@ -1820,6 +1821,7 @@
     .brand-symbol {
       width: 32px;
       height: 32px;
+      font-size: 8.5px;
     }
     .main-content {
       padding: 35px 30px 25px;
@@ -1871,7 +1873,7 @@
     .brand-symbol {
       width: 30px;
       height: 30px;
-      font-size: 12px;
+      font-size: 8px;
     }
     .brand-title {
       font-size: 18px;
