@@ -17,7 +17,8 @@ export function BallScene({
   points,
   centerLabel = 'w',
   guarantee,
-  showLabels = true,
+  showLabels = false,
+  coincidentLabel,
   label,
 }: {
   maxDistance: number;
@@ -26,17 +27,24 @@ export function BallScene({
   centerLabel?: string;
   guarantee?: number;
   showLabels?: boolean;
+  coincidentLabel?: string;
   label: string;
 }) {
   const shells = Array.from({ length: maxDistance + 1 }, (_, i) =>
     points.filter((point) => point.distance === i),
   );
-  const diameter = (r: number) => `${(r / maxDistance) * 80 + 4}%`;
+  const diameter = (r: number) => Math.max(4, (r / maxDistance) * 80) + '%';
+  const hasCenterPoint = points.some((point) => point.distance === 0);
   return (
-    <div className="ball-stage graph-paper" role="group" aria-label={label}>
-      <div className="ball-coordinate">
-        {centerLabel === 'w' ? 'RECEIVED-WORD SPACE' : 'HAMMING SPACE'}
-      </div>
+    <div
+      className={
+        'ball-stage graph-paper' + (showLabels ? ' ball-show-all' : ' ball-context-labels')
+      }
+      role="group"
+      aria-label={label}
+    >
+      <div className="ball-coordinate">HAMMING DISTANCE FROM {centerLabel.toUpperCase()}</div>
+      <span className="ball-radius-badge">E = {radius}</span>
       <div className="ball-square">
         {Array.from({ length: maxDistance }, (_, i) => i + 1).map((r) => (
           <div
@@ -45,6 +53,23 @@ export function BallScene({
             style={{ width: diameter(r), height: diameter(r) }}
           />
         ))}
+        {Array.from({ length: maxDistance }, (_, i) => i + 1)
+          .filter(
+            (r) => maxDistance <= 8 || r % Math.ceil(maxDistance / 8) === 0 || r === maxDistance,
+          )
+          .map((r) => (
+            <span
+              className="ring-number"
+              key={r}
+              aria-hidden="true"
+              style={{
+                left: 50 - (r / maxDistance) * 28.284 + '%',
+                top: 50 - (r / maxDistance) * 28.284 + '%',
+              }}
+            >
+              {r}
+            </span>
+          ))}
         <div
           className="hamming-ball"
           style={{ width: diameter(radius), height: diameter(radius) }}
@@ -57,12 +82,6 @@ export function BallScene({
             <span>t = {guarantee}</span>
           </div>
         )}
-        <span
-          className="ball-radius-label"
-          style={{ top: `${50 - (radius / maxDistance) * 40 - 2}%` }}
-        >
-          E = {radius}
-        </span>
         {shells.flatMap((shell, shellIndex) =>
           shell.map((point, index) => {
             const angle =
@@ -86,14 +105,16 @@ export function BallScene({
                 title={description}
               >
                 <span className="point-dot" />
-                {showLabels && <span className="point-label">{point.label}</span>}
+                {!(coincidentLabel && point.distance === 0) && (
+                  <span className="point-label">{point.label}</span>
+                )}
               </button>
             );
           }),
         )}
         <div className="center-marker" aria-hidden="true">
-          <span />
-          <i>{centerLabel}</i>
+          {!hasCenterPoint && <span />}
+          <i>{coincidentLabel ?? centerLabel}</i>
         </div>
       </div>
       <div className="ball-scale">One ring = one differing coordinate</div>

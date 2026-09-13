@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
 import { MathText } from './Math';
 
@@ -75,6 +75,10 @@ export function Tape({
   onRemove,
   onRemoveAt,
   compact = false,
+  hideIndices = false,
+  hideMismatchMarks = false,
+  onSelect,
+  renderBelow,
 }: {
   values: readonly number[];
   q?: number;
@@ -91,6 +95,10 @@ export function Tape({
   onRemove?: () => void;
   onRemoveAt?: (index: number) => void;
   compact?: boolean;
+  hideIndices?: boolean;
+  hideMismatchMarks?: boolean;
+  onSelect?: (index: number) => void;
+  renderBelow?: (value: number, index: number) => ReactNode;
 }) {
   const tapeRef = useRef<HTMLDivElement>(null);
   const focusAfterRemoval = useRef<number | null>(null);
@@ -104,7 +112,7 @@ export function Tape({
   return (
     <div
       ref={tapeRef}
-      className={`tape-scroll ${compact ? 'tape-compact' : ''}`}
+      className={`tape-scroll ${compact ? 'tape-compact' : ''} ${points ? 'tape-with-points' : ''}`}
       role="group"
       aria-label={label}
     >
@@ -115,15 +123,17 @@ export function Tape({
             key={index}
             onMouseEnter={() => onActive?.(index)}
           >
-            <span className="tape-index">
-              {points ? (
-                <MathText>{pointSymbol + '_{' + index + '}=' + points[index]}</MathText>
-              ) : coefficientLabels ? (
-                <MathText>{`a_{${index}}`}</MathText>
-              ) : (
-                String(index + 1).padStart(2, '0')
-              )}
-            </span>
+            {!hideIndices && (
+              <span className="tape-index">
+                {points ? (
+                  <MathText>{pointSymbol + '_{' + index + '}=' + points[index]}</MathText>
+                ) : coefficientLabels ? (
+                  <MathText>{`a_{${index}}`}</MathText>
+                ) : (
+                  String(index + 1).padStart(2, '0')
+                )}
+              </span>
+            )}
             <div className="tape-cell">
               {editable && onChange ? (
                 <NumberCell
@@ -142,11 +152,22 @@ export function Tape({
                       : undefined
                   }
                 />
+              ) : onSelect ? (
+                <button
+                  className="tape-select"
+                  aria-label={label + ', position ' + (index + 1) + ', value ' + value}
+                  aria-pressed={active === index}
+                  onClick={() => onSelect(index)}
+                  onFocus={() => onActive?.(index)}
+                >
+                  {value}
+                </button>
               ) : (
                 <span>{value}</span>
               )}
             </div>
-            {mismatches.includes(index) && (
+            {renderBelow?.(value, index)}
+            {!hideMismatchMarks && mismatches.includes(index) && (
               <X size={12} className="mismatch-mark" aria-label="Different symbol" />
             )}
           </div>

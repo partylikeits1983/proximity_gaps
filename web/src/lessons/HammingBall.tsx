@@ -3,7 +3,7 @@ import { BINARY_WORDS, binaryWord, distance, ballSize } from '../core/math';
 import { useExperiment } from '../state/ExperimentContext';
 import { MathText } from '../components/Math';
 import { Tape } from '../components/Tape';
-import { Definition, Eyebrow, Insight, Slider, Stat, Toggle } from '../components/Controls';
+import { Definition, Eyebrow, Slider, Stat, Toggle } from '../components/Controls';
 import { BallScene } from '../visuals/BallScene';
 
 export default function HammingBall() {
@@ -25,7 +25,7 @@ export default function HammingBall() {
       <section className="experiment-panel ball-experiment">
         <div className="panel-topline">
           <Eyebrow>ALL 32 WORDS · FIVE BINARY SYMBOLS</Eyebrow>
-          <span className="micro-label">An exact, complete toy universe</span>
+          <span className="small muted">Select a point to compare its symbols</span>
         </div>
         <div className="ball-lesson-layout">
           <div className="ball-visual-column">
@@ -55,7 +55,6 @@ export default function HammingBall() {
             </p>
           </div>
           <div className="ball-controls">
-            <Eyebrow>HOW FAR IS NEARBY?</Eyebrow>
             <div className="ball-formula">
               <MathText>{`B(w,${e.ballRadius})`}</MathText>
             </div>
@@ -130,13 +129,6 @@ export default function HammingBall() {
           </div>
         </div>
       </section>
-      <Insight>
-        <strong>{ballSize(5, 2, e.ballRadius)} words</strong> differ from{' '}
-        <code>{center.join('')}</code> in at most <strong>{e.ballRadius} positions</strong>.{' '}
-        {e.repetition
-          ? `${listSize} of them belong to the highlighted code.`
-          : 'The ball includes ordinary words, whether or not they belong to a code.'}
-      </Insight>
       <Definition>
         <MathText block>{'B(w,E)=\\{y\\in\\mathbb{F}^n:\\Delta(y,w)\\le E\\}'}</MathText>
         <p>

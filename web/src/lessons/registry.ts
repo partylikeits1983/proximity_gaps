@@ -62,11 +62,12 @@ export const lessons: LessonDefinition[] = [
   {
     id: 'decoding-radius',
     number: '05',
-    title: 'When certainty runs out.',
-    shortTitle: 'Decode through noise',
+    title: 'List decoding',
+    shortTitle: 'List decoding',
     group: 'Distance & decoding',
-    description: 'Introduce errors and watch one possible message become a list.',
-    question: 'When can we still recover the message?',
+    description:
+      'Learn why decoding can return a list, then explore all nearby polynomial candidates.',
+    question: 'Which low-degree polynomials are close to this table?',
     noteSection: '3. Unique Decoding vs List Decoding',
     component: lazy(() => import('./DecodingRadius')),
   },

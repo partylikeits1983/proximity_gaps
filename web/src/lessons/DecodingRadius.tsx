@@ -1,23 +1,28 @@
 import { useMemo, useState } from 'react';
-import { Check, Shuffle, Sparkles } from 'lucide-react';
+import { Shuffle, Sparkles } from 'lucide-react';
 import {
   codebook,
+  corrupt,
   distance,
   isDefaultExample,
   parameters,
   polynomialTex,
   wordText,
 } from '../core/math';
+import { listWithoutEnumeration } from '../core/search';
 import { useExperiment } from '../state/ExperimentContext';
 import { MathText } from '../components/Math';
 import { Tape } from '../components/Tape';
-import { Definition, Eyebrow, Insight, Slider, Stat, Toggle } from '../components/Controls';
+import { Definition, Slider, Toggle } from '../components/Controls';
+import { WordComparison } from '../components/WordComparison';
+import { ListDecodingExplainer } from '../components/ListDecodingExplainer';
+import { defaultExperiment } from '../state/model';
 import { BallScene } from '../visuals/BallScene';
 
 export default function DecodingRadius() {
   const { experiment: e, sent, errors, setErrors, patch, loadDefault } = useExperiment();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [visibleCount, setVisibleCount] = useState(4);
   const k = e.coefficients.length;
   const { d, t } = parameters(k, e.n);
   const radius = e.linked ? errors : e.radius;
@@ -29,10 +34,18 @@ export default function DecodingRadius() {
   const list = useMemo(
     () =>
       distances
-        ?.filter((entry) => entry.distance <= radius)
-        .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id)) ?? null,
-    [distances, radius],
+        ? distances
+            .filter((entry) => entry.distance <= radius)
+            .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id))
+        : listWithoutEnumeration(e.coefficients, e.received, e.q, radius),
+    [distances, radius, e.coefficients, e.received, e.q],
   );
+  const reference = {
+    id: e.coefficients.join(','),
+    coefficients: e.coefficients,
+    word: sent,
+    distance: errors,
+  };
   const closest = useMemo(
     () =>
       distances
@@ -42,285 +55,275 @@ export default function DecodingRadius() {
         : [],
     [distances],
   );
-  const sentId = e.coefficients.join(',');
-  const defaultExample = isDefaultExample(e.coefficients, e.n, e.q);
-  const sentEntry = distances?.find((entry) => entry.id === sentId);
-  const alternateEntry = defaultExample
-    ? distances?.find((entry) => entry.id === '3,1,2')
-    : undefined;
   const displayEntries = [
     ...new Map(
       [
-        ...(sentEntry ? [sentEntry] : []),
-        ...(alternateEntry ? [alternateEntry] : []),
+        reference,
+        ...(list?.slice(0, 24) ?? []),
         ...closest,
         ...(distances
-          ?.filter((_, i) => i % Math.max(1, Math.floor(distances.length / 24)) === 0)
-          .slice(0, 24) ?? []),
+          ?.filter((_, i) => i % Math.max(1, Math.floor(distances.length / 12)) === 0)
+          .slice(0, 12) ?? []),
+        ...(list?.filter((entry) => entry.id === selectedId) ?? []),
       ].map((entry) => [entry.id, entry]),
     ).values(),
   ];
-  const selected = distances?.find((entry) => entry.id === selectedId) ?? list?.[0] ?? sentEntry;
-  const mismatchIndices = sent.flatMap((value, i) => (value !== e.received[i] ? [i] : []));
-  const inGuaranteedRange = errors <= t;
+  const selected =
+    displayEntries.find((entry) => entry.id === selectedId) ?? list?.[0] ?? reference;
+
   return (
     <>
-      <section className="experiment-panel decoding-experiment">
+      <ListDecodingExplainer
+        k={k}
+        n={e.n}
+        radius={radius}
+        onExample={(count) => {
+          const preset = defaultExperiment();
+          patch({
+            ...preset,
+            received: corrupt(preset.received, count, preset.q, 1, true),
+            radius: count,
+            linked: false,
+          });
+          setSelectedId(null);
+        }}
+      />
+      <section className="experiment-panel nearby-experiment">
         <div className="panel-topline">
-          <Eyebrow>FROM A SINGLE ANSWER TO A LIST</Eyebrow>
-          <div className="button-row">
-            <button className="text-button" onClick={() => loadDefault(true)}>
-              <Sparkles size={14} /> Three-error example
-            </button>
-          </div>
+          <span className="micro-label">A TABLE, A RADIUS, A LIST</span>
+          <button className="text-button" onClick={() => loadDefault(true)}>
+            <Sparkles size={14} /> Three-error example
+          </button>
         </div>
-        <div className="decoding-layout">
-          <div className="decoding-visual">
+        <div className="nearby-received">
+          <div className="object-label">
+            <MathText>w</MathText>
+            <span>Received table</span>
+            <span className="muted">Edit a value</span>
+          </div>
+          <Tape
+            values={e.received}
+            q={e.q}
+            label="Received table"
+            editable
+            compact
+            onChange={(index, value) =>
+              patch({ received: e.received.map((a, i) => (i === index ? value : a)) })
+            }
+          />
+        </div>
+        <div className="nearby-layout">
+          <div className="nearby-visual">
             <BallScene
               label="Reed–Solomon codewords at their exact distances from the received word"
               maxDistance={e.n}
               radius={radius}
               guarantee={t}
-              showLabels={false}
-              points={displayEntries.map((entry) => ({
+              coincidentLabel={errors === 0 ? 'w = c' : undefined}
+              points={displayEntries.map((entry, index) => ({
                 id: entry.id,
-                label: entry.id === sentId ? 'sent c' : `p(X)=${polynomialTex(entry.coefficients)}`,
+                label: entry.id === reference.id ? 'c' : 'p' + index,
                 distance: entry.distance,
                 codeword: true,
-                emphasis: entry.id === sentId,
-                selected: entry.id === selected?.id,
-                description: `${wordText(entry.word)}, distance ${entry.distance}${entry.id === sentId ? ', sent codeword' : ''}${entry.distance <= radius ? ', inside ball' : ', outside ball'}`,
+                emphasis: entry.id === reference.id,
+                selected: entry.id === selected.id,
+                description:
+                  (entry.id === reference.id ? 'Reference codeword, ' : '') +
+                  wordText(entry.word) +
+                  ', distance ' +
+                  entry.distance +
+                  (entry.distance <= radius ? ', inside ball' : ', outside ball'),
                 onSelect: () => setSelectedId(entry.id),
               }))}
             />
             <div className="legend">
               <span>
-                <i className="legend-diamond" /> Valid codeword
+                <i className="legend-diamond" /> Codeword
               </span>
               <span>
-                <i className="legend-dashed" /> Guaranteed radius t
+                <i className="legend-dashed" /> Uniqueness radius t = {t}
               </span>
             </div>
             <p className="diagram-caption">
               {book
-                ? `${displayEntries.length} of ${book.length.toLocaleString()} codewords drawn; the candidate count searches all of them.`
-                : 'Load a smaller example to show actual candidate codewords.'}
-              <br />
-              Distances are exact from the current center w; other point-to-point distances are not
-              represented.
+                ? displayEntries.length +
+                  ' of ' +
+                  book.length.toLocaleString() +
+                  ' codewords drawn. The count searches all of them.'
+                : 'The known reference stays visible. Only established codewords are plotted.'}
             </p>
           </div>
-          <div className="decoding-controls">
-            <div className={`guarantee-status ${inGuaranteedRange ? '' : 'past-guarantee'}`}>
-              <span className="status-dot" />
-              {inGuaranteedRange
-                ? 'Within the guaranteed error budget'
-                : 'Beyond the guaranteed error budget'}
-            </div>
+          <div className="nearby-controls">
             <Slider
-              label="Introduced errors"
-              value={errors}
+              label="Search radius"
+              value={radius}
               max={e.n}
-              onChange={(value) => setErrors(value)}
-              markers={[{ value: t, label: `t = ${t}` }]}
+              onChange={(value) => patch({ radius: value, linked: false })}
+              markers={[{ value: t, label: 't = ' + t }]}
             />
-            <div className="button-row">
-              <button
-                className="text-button"
-                onClick={() => setErrors(errors, (e.seed % 0xfffffffe) + 1)}
+            <div className="nearby-count" aria-live="polite">
+              <span>Codewords within E = {radius}</span>
+              <strong
+                data-testid="candidate-count"
+                className={list === null ? 'count-unavailable' : ''}
               >
-                <Shuffle size={14} /> New error pattern
-              </button>
-              <span className="micro-label">
-                {e.pattern === 'ambiguity' && defaultExample
-                  ? 'Guided ambiguity'
-                  : `Seed ${e.seed}`}
-              </span>
+                {list === null ? 'Count unavailable' : list.length.toLocaleString()}
+              </strong>
+              <MathText>{'\\Lambda(C,w,E)=B(w,E)\\cap C'}</MathText>
             </div>
-            <div className="stats-row">
-              <Stat
-                label="Minimum distance"
-                value={<MathText>{`d=${d}`}</MathText>}
-                detail={`${e.n} − ${k} + 1`}
-              />
-              <Stat
-                label="Guaranteed radius"
-                value={<MathText>{`t=${t}`}</MathText>}
-                detail="errors we can always correct"
-              />
-            </div>
-            <div className="candidate-count">
-              <span className="micro-label">CODEWORDS WITHIN RADIUS {radius}</span>
-              <div className="candidate-count-value" data-testid="candidate-count">
-                {list === null ? '—' : list.length.toLocaleString()}
-              </div>
-              <MathText>{`|\\Lambda(C,w,${radius})|`}</MathText>
-            </div>
-            <details className="advanced-controls">
-              <summary>Separate search radius from corruption</summary>
-              <Toggle
-                label="Search radius follows errors"
-                checked={e.linked}
-                onChange={(linked) => patch({ linked, radius: errors })}
-              />
-              {!e.linked && (
-                <Slider
-                  label="Search radius"
-                  value={e.radius}
-                  max={e.n}
-                  onChange={(value) => patch({ radius: value })}
-                />
-              )}
-              <p className="small muted">
-                The error count changes the received word. The search radius changes which
-                candidates the decoder accepts.
+            {list !== null && list.length > 0 && (
+              <p className="list-result-explanation">
+                {list.length === 1
+                  ? 'Exactly one codeword fits this word and radius.'
+                  : 'Each of these codewords fits the budget. The list does not choose one.'}
               </p>
-            </details>
+            )}
+            {list === null ? (
+              <div className="nearby-limit">
+                <p>Full search exceeds this demo's limit. This is not an empty list.</p>
+                <button className="secondary-button" onClick={() => loadDefault()}>
+                  Load a small exact example
+                </button>
+              </div>
+            ) : list.length === 0 ? (
+              <p className="nearby-empty">
+                No codeword lies within this radius. Increase E to explore.
+              </p>
+            ) : (
+              <div
+                className="nearby-candidates"
+                role="group"
+                aria-label="Nearby candidate polynomials"
+              >
+                {list.slice(0, visibleCount).map((entry) => (
+                  <button
+                    key={entry.id}
+                    className={
+                      'nearby-candidate' + (entry.id === selected.id ? ' is-selected' : '')
+                    }
+                    onClick={() => setSelectedId(entry.id)}
+                    aria-pressed={entry.id === selected.id}
+                    aria-label={
+                      'Inspect codeword with coefficients ' +
+                      entry.coefficients.join(', ') +
+                      ', distance ' +
+                      entry.distance
+                    }
+                  >
+                    <MathText>{'p(X)=' + polynomialTex(entry.coefficients)}</MathText>
+                    <span>
+                      Δ = {entry.distance}
+                      {entry.id === reference.id ? ' · reference' : ''}
+                    </span>
+                  </button>
+                ))}
+                {list.length > visibleCount && (
+                  <button
+                    className="text-button"
+                    onClick={() => setVisibleCount((count) => count + 8)}
+                  >
+                    Show more · {visibleCount} of {list.length.toLocaleString()}
+                  </button>
+                )}
+              </div>
+            )}
+            <p className="uniqueness-note">
+              {radius <= t
+                ? 'E ≤ t: at most one codeword can fit.'
+                : 'E > t: several codewords may fit.'}
+            </p>
           </div>
         </div>
-        <div className="decoding-tapes word-pair">
-          <div className="word-row">
-            <div className="word-row-label">
-              <MathText>c</MathText>
-              <span>sent</span>
-            </div>
-            <Tape values={sent} label="Sent codeword" mismatches={mismatchIndices} compact />
+        <div className="nearby-selected">
+          <div className="object-label">
+            <span>Selected polynomial</span>
+            <MathText>{'p(X)=' + polynomialTex(selected.coefficients)}</MathText>
+            <span className="muted">
+              Δ = {selected.distance} · {selected.distance <= radius ? 'inside' : 'outside'} the
+              ball
+            </span>
           </div>
-          <div className="word-row">
-            <div className="word-row-label">
-              <MathText>w</MathText>
-              <span>received</span>
-            </div>
-            <Tape values={e.received} label="Corrupted word" mismatches={mismatchIndices} compact />
-          </div>
+          <Tape
+            values={selected.word}
+            label="Selected candidate"
+            compact
+            mismatches={selected.word.flatMap((a, i) => (a !== e.received[i] ? [i] : []))}
+          />
         </div>
       </section>
-      <Insight tone={inGuaranteedRange ? 'green' : 'amber'}>
-        {inGuaranteedRange ? (
-          <>
-            <strong>Recovery is guaranteed with at most {t} errors.</strong>{' '}
-            {errors === 0
-              ? 'The received word is the sent codeword.'
-              : `This word has ${errors} errors.`}{' '}
-            {radius < errors && 'The current search radius is too small to include the sent word.'}
-            {radius > t && 'Your wider search radius can still include extra candidates.'}
-          </>
-        ) : (
-          <>
-            <strong>The guarantee has ended.</strong>{' '}
-            {list && list.length > 1
-              ? `${list.length.toLocaleString()} codewords fit this search radius, so the budget alone does not identify the sent one.`
-              : list?.length === 1
-                ? 'One candidate fits this search radius, but it need not be the word that was sent.'
-                : list?.length === 0
-                  ? 'No codeword fits this search radius.'
-                  : 'Use a small exact example to inspect the candidates.'}
-          </>
-        )}
-      </Insight>
-      {list === null ? (
-        <div className="enumeration-limit">
-          <h2>Keep this experiment small enough to count.</h2>
-          <p>
-            This setting has {e.q}
-            <sup>{k}</sup> possible codewords. Exact exploration supports up to 10,000 codewords and
-            250,000 coordinate evaluations. Encoding and distance still work at your current
-            settings.
-          </p>
-          <button className="secondary-button" onClick={() => loadDefault()}>
-            Load a small exact example
-          </button>
-        </div>
-      ) : (
-        <section className="candidate-section">
-          <div className="section-heading">
-            <Eyebrow>THE DECODER'S CANDIDATES</Eyebrow>
-            <span className="micro-label">The sent label is known to this demonstration</span>
-          </div>
-          {list.length === 0 ? (
-            <p className="empty-state">
-              No codeword is within {radius} changes of this received word. Increase the search
-              radius to explore further.
-            </p>
-          ) : (
-            <div className="table-scroll">
-              <table className="math-table candidate-table">
-                <thead>
-                  <tr>
-                    <th>Message polynomial</th>
-                    <th>Distance to w</th>
-                    <th>In this demonstration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.slice(0, visibleCount).map((entry) => (
-                    <tr className={entry.id === selected?.id ? 'row-active' : ''} key={entry.id}>
-                      <td>
-                        <button
-                          className="text-button candidate-polynomial"
-                          aria-label={`Inspect codeword with coefficients ${entry.coefficients.join(', ')}, distance ${entry.distance}`}
-                          onClick={() => setSelectedId(entry.id)}
-                          aria-pressed={entry.id === selected?.id}
-                        >
-                          <MathText>{`p(X)=${polynomialTex(entry.coefficients)}`}</MathText>
-                        </button>
-                      </td>
-                      <td>{entry.distance}</td>
-                      <td>
-                        {entry.id === sentId ? (
-                          <span className="sent-tag">
-                            <Check size={12} /> Sent word
-                          </span>
-                        ) : (
-                          'Another valid word'
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {list.length > visibleCount && (
+      <Definition title="Change the received table">
+        <div className="nearby-change-controls">
+          <Slider
+            label="Introduced errors"
+            value={errors}
+            max={e.n}
+            onChange={(value) => setErrors(value)}
+          />
+          <div className="button-row">
             <button
-              className="secondary-button"
-              onClick={() => setVisibleCount((count) => count + 16)}
+              className="text-button"
+              onClick={() => setErrors(errors, (e.seed % 0xfffffffe) + 1)}
             >
-              Show more · {visibleCount} of {list.length.toLocaleString()}
+              <Shuffle size={14} /> New error pattern
             </button>
-          )}
-          {selected && (
-            <div className="candidate-inspector">
-              <div className="object-label">
-                <span>Selected codeword</span>
-                <MathText>{`p(X)=${polynomialTex(selected.coefficients)}`}</MathText>
-              </div>
-              <Tape
-                values={selected.word}
-                label="Selected candidate"
-                mismatches={selected.word.flatMap((a, i) => (a !== e.received[i] ? [i] : []))}
-                compact
-              />
-              <p className="small muted">
-                Distance {selected.distance} from the received word ·{' '}
-                {selected.distance <= radius ? 'inside' : 'outside'} the search ball.
-              </p>
-            </div>
-          )}
-        </section>
-      )}
-      <Definition>
-        <MathText block>{'d=n-k+1,\\qquad t=\\left\\lfloor\\frac{d-1}{2}\\right\\rfloor'}</MathText>
+            <span className="micro-label">
+              {e.pattern === 'ambiguity' && isDefaultExample(e.coefficients, e.n, e.q)
+                ? 'Guided ambiguity'
+                : 'Seed ' + e.seed}
+            </span>
+            <Toggle
+              label="Search radius follows errors"
+              checked={e.linked}
+              onChange={(linked) => patch({ linked, radius: errors })}
+            />
+          </div>
+        </div>
+        <WordComparison reference={sent} received={e.received} q={e.q} />
         <p>
-          Two different codewords cannot both be within distance <MathText>t</MathText> of the same
-          received word: their mutual distance would be at most <MathText>2t&lt;d</MathText>.
+          The reference c lets you see how changing a table affects its neighbors. A STARK verifier
+          is not given a trusted reference polynomial.
         </p>
-        <MathText block>{'\\Lambda(C,w,E)=B(w,E)\\cap C'}</MathText>
+      </Definition>
+      <Definition title="What the list guarantees">
+        <MathText block>{'\\Lambda(C,w,E)=\\{c\\in C:\\Delta(c,w)\\le E\\}'}</MathText>
         <p>
-          Beyond the guaranteed radius, a particular received word may still have one candidate.
-          List decoding returns every codeword within the chosen budget; it does not know which one
-          was originally sent. Holding the center fixed and increasing the radius can only add
-          candidates.
+          The list contains all codewords within the radius, including any that are farther away
+          than the nearest one. If the transmitted codeword suffered at most E errors, it is in this
+          list. Without that assumption, the original codeword can be outside it.
+        </p>
+        <p>
+          List decoding does not select the original message when several candidates remain.
+          Selecting one requires additional information. It also does not give each candidate a
+          probability.
+        </p>
+        <p>
+          For a fixed received word, increasing E cannot shrink the list. A large radius may produce
+          a large list. Coding theory asks for bounds that hold for every received word, not just
+          the example shown here.
+        </p>
+        <p>
+          This small demo finds candidates by checking the codebook when feasible. Efficient
+          algebraic list-decoding algorithms are a separate topic.
+        </p>
+      </Definition>
+      <Definition title="Uniqueness, distance, and STARK soundness">
+        <MathText block>
+          {'d=' + d + ',\\qquad t=\\left\\lfloor\\frac{d-1}{2}\\right\\rfloor=' + t}
+        </MathText>
+        <p>
+          If two codewords were both within distance t of w, their mutual distance would be at most
+          2t, less than d. This guarantees at most one nearby codeword, not that a codeword exists.
+        </p>
+        <p>
+          A unique nearby polynomial does not establish a valid STARK proof. The full protocol also
+          checks commitments and computation constraints. Lists enter the soundness analysis; the
+          ordinary verifier does not enumerate them.
+        </p>
+        <p>
+          Distances here are measured from the center w. Angles and distances between other plotted
+          points have no mathematical meaning. Full enumeration is bounded at 10,000 codewords and
+          250,000 coordinate evaluations. Some counts can still be determined exactly by
+          interpolation or minimum distance.
         </p>
       </Definition>
     </>

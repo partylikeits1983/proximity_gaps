@@ -87,7 +87,9 @@ describe('interactive lessons', () => {
       within(screen.getByRole('group', { name: 'Codeword' })).getAllByText(/^\d+$/).length,
     ).toBe(24);
     fireEvent.change(slider, { target: { value: '3' } });
-    expect(screen.getByText('No redundancy yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('0 redundant symbols · the polynomial stays fixed.'),
+    ).toBeInTheDocument();
   });
   it('allows two different wrong symbols without changing Hamming distance', async () => {
     const user = userEvent.setup();
@@ -121,22 +123,134 @@ describe('interactive lessons', () => {
       screen.getByRole('button', { name: '11111, distance 0, inside the ball' }),
     ).toBeInTheDocument();
   });
+  it('explains list decoding and loads exact unique and ambiguous examples', async () => {
+    const user = userEvent.setup();
+    const { container } = start('decoding-radius', defaultExperiment(5));
+    expect(
+      await screen.findByRole('heading', { name: 'List decoding', level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Received word, distance filter, candidate list' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Why a list?' }));
+    await user.click(screen.getByRole('button', { name: /Load 2 errors/ }));
+    expect(screen.getByTestId('candidate-count')).toHaveTextContent(/^1$/);
+    expect(screen.getByRole('slider', { name: 'Search radius' })).toHaveValue('2');
+    expect(screen.getByText('Exactly one codeword fits this word and radius.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Load 3 errors/ }));
+    expect(screen.getByTestId('candidate-count')).toHaveTextContent(/^2$/);
+    expect(screen.getByRole('slider', { name: 'Search radius' })).toHaveValue('3');
+    const before = JSON.parse(new URLSearchParams(window.location.search).get('s')!).received;
+    fireEvent.change(screen.getByRole('slider', { name: 'Search radius' }), {
+      target: { value: '2' },
+    });
+    expect(screen.getByTestId('candidate-count')).toHaveTextContent(/^0$/);
+    expect(JSON.parse(new URLSearchParams(window.location.search).get('s')!).received).toEqual(
+      before,
+    );
+    await user.click(screen.getByRole('button', { name: 'In a STARK' }));
+    expect(screen.getByText('Soundness analysis')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Load 3 errors/ })).toBeNull();
+    await user.click(screen.getByText('What the list guarantees'));
+    expect(container.querySelector('.katex-error')).toBeNull();
+  });
   it('reveals genuine ambiguity and supports an independent empty search radius', async () => {
     const user = userEvent.setup();
     const { container } = start('decoding-radius');
-    const slider = await screen.findByRole('slider', { name: 'Introduced errors' });
+    await user.click(await screen.findByText('Change the received table'));
+    const slider = screen.getByRole('slider', { name: 'Introduced errors' });
     fireEvent.change(slider, { target: { value: '2' } });
     expect(screen.getByTestId('candidate-count')).toHaveTextContent('1');
     fireEvent.change(slider, { target: { value: '3' } });
     expect(screen.getByTestId('candidate-count')).toHaveTextContent('2');
-    expect(screen.getByText('The guarantee has ended.')).toBeInTheDocument();
-    await user.click(screen.getByText('Separate search radius from corruption'));
-    await user.click(screen.getByRole('checkbox', { name: 'Search radius follows errors' }));
+    expect(screen.getByText('E > t: several codewords may fit.')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('slider', { name: 'Search radius' }), {
       target: { value: '0' },
     });
     expect(screen.getByTestId('candidate-count')).toHaveTextContent('0');
     expect(container.querySelector('.katex-error')).toBeNull();
+  });
+  it('keeps the reference visible and distinguishes an unknown list from an empty one', async () => {
+    const user = userEvent.setup();
+    const { container } = start('decoding-radius', {
+      ...defaultExperiment(),
+      coefficients: [3, 2, 1, 0],
+    });
+    await screen.findByRole('slider', { name: 'Search radius' });
+    expect(screen.getByTestId('candidate-count')).toHaveTextContent(/^1$/);
+    expect(container.querySelector('.center-marker')).toHaveTextContent('w = c');
+    fireEvent.change(screen.getByRole('slider', { name: 'Search radius' }), {
+      target: { value: '5' },
+    });
+    expect(screen.getByTestId('candidate-count')).toHaveTextContent('Count unavailable');
+    expect(screen.getByRole('button', { name: /Reference codeword/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Load a small exact example' }));
+    expect(screen.getByTestId('candidate-count')).toHaveTextContent(/^1$/);
+    expect(screen.queryByText('Count unavailable')).toBeNull();
+  });
+  it('inspects candidates beyond the initially drawn subset', async () => {
+    const user = userEvent.setup();
+    const { container } = start('decoding-radius', {
+      ...defaultExperiment(5),
+      coefficients: [3, 2, 1],
+      n: 5,
+      received: [3, 1, 1, 3, 2],
+      radius: 5,
+      linked: false,
+    });
+    await screen.findByRole('slider', { name: 'Search radius' });
+    expect(screen.getByTestId('candidate-count')).toHaveTextContent(/^125$/);
+    for (let i = 0; i < 5; i++) await user.click(screen.getByRole('button', { name: /Show more/ }));
+    const candidates = screen.getByRole('group', { name: 'Nearby candidate polynomials' });
+    const drawn = [...container.querySelectorAll('.ball-point')].map((point) =>
+      point.getAttribute('aria-label'),
+    );
+    const candidateButtons = within(candidates)
+      .getAllByRole('button')
+      .filter((button) => button.getAttribute('aria-label')?.startsWith('Inspect codeword'));
+    const wordFor = (button: HTMLElement) => {
+      const coefficients = button
+        .getAttribute('aria-label')!
+        .match(/coefficients (.+), distance/)![1]
+        .split(', ')
+        .map(Number);
+      return Array.from(
+        { length: 5 },
+        (_, x) => (coefficients[0] + coefficients[1] * x + coefficients[2] * x * x) % 5,
+      );
+    };
+    const target = candidateButtons.find(
+      (button) =>
+        !drawn.some((description) => description?.includes('[' + wordFor(button).join(', ') + ']')),
+    )!;
+    expect(target).toBeDefined();
+    await user.click(target);
+    expect(target).toHaveAttribute('aria-pressed', 'true');
+    const selected = screen.getByRole('group', { name: 'Selected candidate' });
+    const values = [...selected.querySelectorAll('.tape-cell')].map((cell) =>
+      Number(cell.textContent),
+    );
+    expect(values).toEqual(wordFor(target));
+    expect(
+      screen.getByRole('button', {
+        name:
+          '[' +
+          values.join(', ') +
+          '], distance ' +
+          target.getAttribute('aria-label')!.split('distance ')[1] +
+          ', inside ball',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+  it('selects an output symbol and highlights the corresponding evaluation', async () => {
+    const user = userEvent.setup();
+    start('evaluation-codeword');
+    await user.click(await screen.findByRole('button', { name: 'Codeword, position 5, value 10' }));
+    expect(screen.getByRole('button', { name: 'Inspect evaluation at 4' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('SUBSTITUTE X = 4 · MODULO 17')).toBeInTheDocument();
   });
   it('restores a shared route on history navigation', async () => {
     start();

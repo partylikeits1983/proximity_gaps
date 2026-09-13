@@ -109,6 +109,9 @@ export default function CodesToProofs() {
   const expected = friFoldPair(codeword[query], codeword[query + half], x, settings.alpha, e.q);
   const agrees = expected === claimed[query];
   const lagrange = interpolate(traceDomain, trace, e.q);
+  const contribution = basis[currentBasis].map((coefficient) =>
+    mod(coefficient * trace[currentBasis], e.q),
+  );
   const changeTrace = (index: number, value: number) => {
     const next = trace.map((entry, i) => (i === index ? value : entry));
     setExample(fft(next, e.q, true), e.n);
@@ -181,53 +184,84 @@ export default function CodesToProofs() {
                   coefficients.
                 </p>
               </div>
+              <div className="representation-flow">
+                <div className="representation-side">
+                  <span className="representation-label">Evaluations · input</span>
+                  <Tape
+                    values={trace}
+                    points={traceDomain}
+                    pointSymbol="h"
+                    label="Interpolation trace"
+                    compact
+                  />
+                </div>
+                <div className="representation-arrow">
+                  <span>Inverse FFT</span>
+                  <ArrowRight size={26} />
+                  <MathText>{'v \\longmapsto a'}</MathText>
+                </div>
+                <div className="representation-side">
+                  <span className="representation-label">Coefficients · output</span>
+                  <Tape
+                    values={recovered}
+                    label="Interpolated coefficients"
+                    coefficientLabels
+                    compact
+                  />
+                </div>
+              </div>
               <div
                 className="proof-key-equation proof-polynomial"
                 aria-label={'Interpolated polynomial: ' + polynomialTex(recovered)}
               >
                 <MathText>{'p(X)=' + polynomialTex(recovered)}</MathText>
               </div>
-              <Tape
-                values={recovered}
-                q={e.q}
-                label="Interpolated coefficients"
-                coefficientLabels
-              />
               <p className="proof-caption">
-                There are {traceLength} coefficient slots, including trailing zeros. No transmission
-                errors are being corrected.
+                All {traceLength} evaluations determine {traceLength} coefficients, including any
+                trailing zeros. No transmission errors are being corrected.
               </p>
               <Definition title="See the Lagrange interpolation">
                 <p>
                   Lagrange interpolation gives the same result. Each basis polynomial is 1 at its
                   own trace point and 0 at every other trace point.
                 </p>
-                <div className="proof-controls">
-                  <label>
-                    Basis polynomial
-                    <select
-                      aria-label="Lagrange basis polynomial"
-                      value={currentBasis}
-                      onChange={(event) => setBasisIndex(Number(event.target.value))}
-                    >
-                      {trace.map((_, i) => (
-                        <option key={i} value={i}>
-                          {'L' + i + ' at h=' + traceDomain[i]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <MathText block>
-                  {'L_{' + currentBasis + '}(X)=' + polynomialTex(basis[currentBasis])}
-                </MathText>
+                <p className="small">Select a trace value to isolate its contribution.</p>
                 <Tape
-                  values={traceDomain.map((point) => evaluate(basis[currentBasis], point, e.q))}
+                  values={trace}
                   points={traceDomain}
                   pointSymbol="h"
-                  label="Lagrange basis evaluations"
+                  label="Lagrange trace values"
+                  active={currentBasis}
+                  onSelect={setBasisIndex}
                   compact
                 />
+                <div className="lagrange-contribution">
+                  <span className="representation-label">Selected weight</span>
+                  <MathText>{'v_{' + currentBasis + '}=' + trace[currentBasis]}</MathText>
+                  <span className="representation-label">Basis polynomial</span>
+                  <MathText block>
+                    {'L_{' + currentBasis + '}(X)=' + polynomialTex(basis[currentBasis])}
+                  </MathText>
+                  <Tape
+                    values={traceDomain.map((point) => evaluate(basis[currentBasis], point, e.q))}
+                    points={traceDomain}
+                    pointSymbol="h"
+                    label="Lagrange basis evaluations"
+                    compact
+                  />
+                  <span className="representation-label">Weighted contribution</span>
+                  <MathText block>
+                    {'v_{' +
+                      currentBasis +
+                      '}L_{' +
+                      currentBasis +
+                      '}(X)=' +
+                      polynomialTex(contribution)}
+                  </MathText>
+                </div>
+                <p className="small">
+                  Add all {traceLength} weighted basis polynomials to recover p.
+                </p>
                 <MathText block>
                   {'p(X)=\\sum_{i=0}^{' +
                     (traceLength - 1) +
@@ -335,24 +369,37 @@ export default function CodesToProofs() {
                   onChange={(tamper) => update({ tamper })}
                 />
               </div>
-              <div className="proof-openings">
-                <QueryTable
-                  title="Original table w"
-                  points={domain}
-                  values={codeword}
-                  opened={[query, query + half]}
-                />
-                <div className="proof-fold-connector">
-                  <span />
-                  <MathText>{'x,-x\\longmapsto x^2'}</MathText>
-                  <span />
+              <div
+                className="fri-pair-diagram"
+                role="group"
+                aria-label="Two queried values fold into one"
+              >
+                <div className="fri-pair-inputs">
+                  <div className="fri-value">
+                    <span>Open at x = {x}</span>
+                    <MathText>{'w(' + x + ')=' + codeword[query]}</MathText>
+                  </div>
+                  <div className="fri-value">
+                    <span>Open at −x = {domain[query + half]}</span>
+                    <MathText>
+                      {'w(' + domain[query + half] + ')=' + codeword[query + half]}
+                    </MathText>
+                  </div>
                 </div>
-                <QueryTable
-                  title="Folded table g"
-                  points={foldedDomain}
-                  values={claimed}
-                  opened={[query]}
-                />
+                <svg
+                  className="fri-pair-arrows"
+                  viewBox="0 0 400 66"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <path d="M100 0 V18 Q100 30 112 30 H188 Q200 30 200 42 V61 M300 0 V18 Q300 30 288 30 H212 Q200 30 200 42" />
+                  <path d="m194 55 6 6 6-6" />
+                </svg>
+                <div className={'fri-value fri-pair-output' + (agrees ? '' : ' is-inconsistent')}>
+                  <span>Open at x² = {foldedDomain[query]}</span>
+                  <MathText>{'g(' + foldedDomain[query] + ')=' + claimed[query]}</MathText>
+                  <small>Expected from the pair: {expected}</small>
+                </div>
               </div>
               <div
                 className={'proof-check ' + (agrees ? 'is-consistent' : 'is-inconsistent')}
@@ -389,6 +436,22 @@ export default function CodesToProofs() {
                 Only three opened values are needed for this relation. A passing pair alone does not
                 establish low degree. The verifier never needs the reference polynomial shown above.
               </p>
+              <Definition title="Inspect the committed tables">
+                <div className="proof-openings">
+                  <QueryTable
+                    title="Original table w"
+                    points={domain}
+                    values={codeword}
+                    opened={[query, query + half]}
+                  />
+                  <QueryTable
+                    title="Folded table g"
+                    points={foldedDomain}
+                    values={claimed}
+                    opened={[query]}
+                  />
+                </div>
+              </Definition>
               <Definition title="What the full FRI protocol adds">
                 <p>
                   The prover commits to each table with a Merkle root. Challenges determine folds;

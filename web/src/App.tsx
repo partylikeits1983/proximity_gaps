@@ -198,7 +198,7 @@ export default function App() {
                       {proofLesson
                         ? "Prover's polynomial"
                         : lessonId === 'decoding-radius' || lessonId === 'hamming-distance'
-                          ? 'Sent polynomial'
+                          ? 'Reference polynomial'
                           : 'Polynomial'}
                     </span>
                     <MathText>{'p(X)=' + polynomialTex(e.coefficients)}</MathText>

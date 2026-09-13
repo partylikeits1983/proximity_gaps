@@ -356,3 +356,175 @@
     }
   }
 }
+
+@layer components {
+  .proof-content {
+    min-height: 300px;
+    padding-top: 24px;
+  }
+  .proof-introduction {
+    margin-bottom: 22px;
+  }
+  .proof-introduction h2 {
+    font-size: 24px;
+  }
+  .proof-introduction p {
+    line-height: 1.7;
+  }
+  .representation-flow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr);
+    align-items: center;
+    gap: 18px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper);
+  }
+  .representation-side {
+    min-width: 0;
+  }
+  .representation-label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .representation-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--green);
+    font-size: 10px;
+  }
+  .representation-arrow > .math {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .proof-polynomial {
+    font-size: 24px;
+    padding: 20px 0 0;
+  }
+  .lagrange-contribution {
+    border-left: 2px solid #95b683;
+    padding: 5px 18px;
+    margin: 16px 0 20px;
+    color: var(--green-dark);
+  }
+  .lagrange-contribution .representation-label:not(:first-child) {
+    margin-top: 18px;
+  }
+  .lagrange-contribution .math-block {
+    text-align: left;
+    font-size: 16px;
+    margin-top: 0;
+  }
+  .lagrange-contribution .katex-display {
+    text-align: left;
+    margin: 8px 0 16px;
+  }
+  .fri-pair-diagram {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 6px;
+  }
+  .fri-pair-inputs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .fri-value {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    border: 1px solid #a8c4a5;
+    background: #edf5e9;
+    border-radius: 6px;
+    color: var(--green-dark);
+    gap: 7px;
+  }
+  .fri-value > span:not(.math) {
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .fri-value > .math {
+    font-size: 22px;
+  }
+  .fri-value small {
+    font-size: 10px;
+  }
+  .fri-pair-arrows {
+    display: block;
+    width: 100%;
+    height: 66px;
+    overflow: visible;
+  }
+  .fri-pair-arrows path {
+    fill: none;
+    stroke: #76a36b;
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .fri-pair-output {
+    max-width: 205px;
+    margin: 0 auto;
+  }
+  .fri-pair-output.is-inconsistent {
+    background: #fcf4e8;
+    border-color: #d7bc8c;
+    color: var(--amber);
+  }
+  .proof-openings {
+    display: grid;
+    gap: 22px;
+  }
+}
+@layer responsive {
+  @media (max-width: 1100px) {
+    .representation-flow {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+    .representation-arrow {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .representation-arrow svg {
+      transform: rotate(90deg);
+      order: -1;
+    }
+  }
+  @media (max-width: 760px) {
+    .proof-content {
+      padding: 22px 18px;
+    }
+    .proof-polynomial {
+      font-size: 20px;
+    }
+    .representation-flow {
+      padding: 16px;
+    }
+    .fri-pair-diagram {
+      padding: 12px;
+    }
+    .fri-pair-inputs {
+      gap: 14px;
+    }
+    .fri-value > .math {
+      font-size: 18px;
+    }
+    .fri-value > span:not(.math) {
+      font-size: 9px;
+    }
+    .fri-pair-output {
+      max-width: 165px;
+    }
+  }
+}

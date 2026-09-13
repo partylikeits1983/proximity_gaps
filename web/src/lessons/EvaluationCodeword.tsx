@@ -1,18 +1,24 @@
 import { useState } from 'react';
-import { ArrowDown, ChevronRight } from 'lucide-react';
-import { fraction, polynomialTex } from '../core/math';
+import { ChevronRight } from 'lucide-react';
+import { fraction } from '../core/math';
 import { useExperiment } from '../state/ExperimentContext';
 import { MathText } from '../components/Math';
 import { Tape } from '../components/Tape';
-import { Definition, Eyebrow, Insight, Slider } from '../components/Controls';
+import { Definition, Slider } from '../components/Controls';
 
 export default function EvaluationCodeword() {
   const { experiment: e, sent, setExample } = useExperiment();
   const [selected, setSelected] = useState(3);
-  const [active, setActive] = useState<number | null>(null);
   const x = Math.min(selected, e.n - 1);
   const k = e.coefficients.length;
-  // Horner's method keeps intermediate values exact even for the largest supported tape.
+  // Reduce powers and products before summing: never use large floating-point powers.
+  let power = 1;
+  const terms = e.coefficients.map((coefficient) => {
+    const result = (coefficient * power) % e.q;
+    power = (power * x) % e.q;
+    return result;
+  });
+  const total = terms.reduce((sum, value) => sum + value, 0);
   let acc = 0;
   const steps = [...e.coefficients].reverse().map((a) => {
     const input = acc;
@@ -22,17 +28,25 @@ export default function EvaluationCodeword() {
   });
   return (
     <>
-      <section className="experiment-panel">
+      <section className="experiment-panel evaluation-experiment">
         <div className="panel-topline">
-          <Eyebrow>ONE POLYNOMIAL, MANY EVALUATIONS</Eyebrow>
-          <MathText>{`p(X)=${polynomialTex(e.coefficients)}`}</MathText>
+          <div className="object-label">
+            <MathText>c</MathText>
+            <span>Reed–Solomon codeword</span>
+          </div>
+          <span className="small muted">
+            {k} coefficients → {e.n} evaluations
+          </span>
         </div>
-        <div className="evaluation-layout">
+        <div className="evaluation-output">
+          <Tape values={sent} label="Codeword" active={x} onSelect={setSelected} compact />
+          <p className="stage-helper">Select a symbol to inspect its evaluation.</p>
+        </div>
+        <div className="evaluation-workbench">
           <div className="evaluation-table-wrap">
             <table className="math-table evaluation-table">
               <thead>
                 <tr>
-                  <th>Position</th>
                   <th>Point</th>
                   <th>Evaluate</th>
                   <th>Symbol</th>
@@ -40,25 +54,18 @@ export default function EvaluationCodeword() {
               </thead>
               <tbody>
                 {sent.map((value, i) => (
-                  <tr
-                    key={i}
-                    className={i === x || i === active ? 'row-active' : ''}
-                    onMouseEnter={() => setActive(i)}
-                    onMouseLeave={() => setActive(null)}
-                  >
-                    <td className="index-label">{String(i + 1).padStart(2, '0')}</td>
+                  <tr key={i} className={i === x ? 'row-active' : ''}>
                     <td>
-                      <MathText>{`x_{${i + 1}}=${i}`}</MathText>
+                      <MathText>{'x_{' + (i + 1) + '}=' + i}</MathText>
                     </td>
                     <td>
                       <button
                         className="evaluation-button"
-                        aria-label={`Inspect evaluation at ${i}`}
+                        aria-label={'Inspect evaluation at ' + i}
                         aria-pressed={x === i}
                         onClick={() => setSelected(i)}
-                        onFocus={() => setActive(i)}
                       >
-                        <MathText>{`p(${i})`}</MathText>
+                        <MathText>{'p(' + i + ')'}</MathText>
                         <ChevronRight size={14} />
                       </button>
                     </td>
@@ -71,12 +78,6 @@ export default function EvaluationCodeword() {
             </table>
           </div>
           <div className="evaluation-controls">
-            <Eyebrow>MORE POINTS, MORE REDUNDANCY</Eyebrow>
-            <h2>
-              The message stays.
-              <br />
-              The codeword grows.
-            </h2>
             <label className="select-label" htmlFor="rate-select">
               Code rate <MathText>{'\\rho=k/n'}</MathText>
             </label>
@@ -100,59 +101,55 @@ export default function EvaluationCodeword() {
               value={e.n}
               onChange={(n) => setExample(e.coefficients, n)}
             />
-            <div className="evaluation-inspector">
+            <p className="evaluation-redundancy">
+              {e.n - k} redundant symbols · the polynomial stays fixed.
+            </p>
+            <div className="evaluation-calculation" aria-live="polite">
               <span className="micro-label">
-                AT X = {x} · MODULO {e.q}
+                SUBSTITUTE X = {x} · MODULO {e.q}
               </span>
-              <MathText block>{`p(${x})=${sent[x]}`}</MathText>
+              <div className="evaluation-term-sum">
+                <MathText>{'p(' + x + ')\\equiv ' + terms.join('+')}</MathText>
+              </div>
+              <MathText block>
+                {total + '\\equiv \\boxed{' + sent[x] + '}\\pmod{' + e.q + '}'}
+              </MathText>
+              <span className="small muted">Each term is reduced modulo {e.q}, then added.</span>
               <details>
-                <summary>See the arithmetic</summary>
-                <p className="small">
-                  Evaluate from the highest coefficient, reducing after every step:
-                </p>
+                <summary>Show every multiplication</summary>
+                <p className="small">Horner’s method, starting at the highest coefficient:</p>
                 {steps.map((step, i) => (
                   <div className="arithmetic-step" key={i}>
-                    <MathText>{`(${step.input}\\cdot${x}+${step.coefficient})=${step.raw}\\equiv${step.result}\\pmod{${e.q}}`}</MathText>
+                    <MathText>
+                      {'(' +
+                        step.input +
+                        '\\cdot' +
+                        x +
+                        '+' +
+                        step.coefficient +
+                        ')=' +
+                        step.raw +
+                        '\\equiv' +
+                        step.result +
+                        '\\pmod{' +
+                        e.q +
+                        '}'}
+                    </MathText>
                   </div>
                 ))}
               </details>
             </div>
           </div>
         </div>
-        <div className="codeword-output">
-          <div className="object-label">
-            <ArrowDown size={17} />
-            <span>The Reed–Solomon codeword</span>
-            <span className="muted">{e.n} symbols</span>
-          </div>
-          <Tape values={sent} label="Codeword" active={active ?? x} onActive={setActive} compact />
-        </div>
       </section>
-      <Insight>
-        {e.n === k ? (
-          <>
-            <strong>No redundancy yet.</strong> There are as many evaluations as message
-            coefficients.
-          </>
-        ) : (
-          <>
-            <strong>
-              {k} message symbols → {e.n} codeword symbols.
-            </strong>{' '}
-            The rate is {fraction(k, e.n)} ({((k / e.n) * 100).toFixed(1)}%), with {e.n - k}{' '}
-            redundant symbols.
-          </>
-        )}
-      </Insight>
       <Definition>
         <MathText block>
           {'\\operatorname{Enc}(a_0,\\ldots,a_{k-1})=(p(x_1),\\ldots,p(x_n))'}
         </MathText>
         <p>
           The evaluation points must be distinct field elements. This experiment uses{' '}
-          <MathText>{`0,1,\\ldots,${e.n - 1}`}</MathText>. Every output is a polynomial evaluation;
-          the first <MathText>k</MathText> output symbols are not necessarily the original
-          coefficients.
+          <MathText>{'0,1,\\ldots,' + (e.n - 1)}</MathText>. Every output is a polynomial
+          evaluation; the first k output symbols are not necessarily the original coefficients.
         </p>
       </Definition>
     </>

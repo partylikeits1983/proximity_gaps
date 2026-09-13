@@ -10,36 +10,38 @@ Use Node.js 22.12 or newer.
 
 ```sh
 cd web
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
 Open the local URL printed by Vite. Each experiment has its own URL under `/visuals/`. The application computes locally in the browser and requires no API keys or backend.
 
 ```sh
-npm run typecheck
-npm test
-npm run format:check
-npm run build
-npm run preview
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
+pnpm run preview
 ```
 
-`npm run build` checks TypeScript and writes the production site to `dist/`. `npm test` runs mathematical, serialization, and interaction tests. `npm run test:watch` watches tests during development.
+`pnpm run build` checks TypeScript and writes the production site to `dist/`. `pnpm test` runs mathematical, serialization, and interaction tests. `pnpm run test:watch` watches tests during development.
 
-Use `npm run format` to format the frontend's TypeScript, styles, configuration, and documentation with Prettier.
+Use `pnpm run format` to format the frontend's TypeScript, styles, configuration, and documentation with Prettier.
 
 ## Implemented experiments
 
 | Step | Experiment           | Interactions                                                                                                                       |
 | ---- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 01   | Tape to polynomial   | Edit coefficients, add/remove slots, inspect the coefficient-to-term mapping, and reveal zero terms.                               |
+| 01   | Tape to polynomial   | Edit coefficients, follow aligned arrows to their terms, add/delete slots, and highlight a term in the sum.                        |
 | 02   | Build a codeword     | Change the rate or evaluation count; inspect modular evaluation arithmetic and the resulting output tape.                          |
-| 03   | Measure errors       | Edit the received word, compare mismatched positions, and see absolute distance Δ, relative distance δ, and ball membership.       |
+| 03   | Measure errors       | Edit aligned reference/received rows; each unequal column contributes one to Δ. Inspect δ and a compact distance diagram.          |
 | 04   | Grow a Hamming ball  | Explore all 32 binary words of length five, change the center and radius, and optionally highlight the repetition code.            |
-| 05   | Decode through noise | Introduce deterministic errors, cross the guaranteed decoding radius, and inspect the exact list of candidate RS codewords.        |
+| 05   | List decoding        | Read the guided explainer, compare exact one/two-candidate examples, grow the radius, and inspect every nearby polynomial.         |
 | 06   | From codes to proofs | Edit trace evaluations, recover the polynomial with IFFT/Lagrange interpolation, extend it with FFT, and inspect a local FRI fold. |
 
 The default RS example uses the prime field F₁₇, coefficients `[3, 2, 1]`, and evaluation points `0…7`. Its codeword is `[3, 6, 11, 1, 10, 4, 0, 15]`. Its minimum distance is 6 and its guaranteed unique-decoding radius is 2.
+
+**List decoding** includes three short explanations: the definition, why multiple answers can fit, and the role of list-size bounds in STARK soundness. The example buttons load F₁₇ with k = 3 and n = 8; they separate the error count from the search radius so readers can grow the list while keeping the received word fixed. The explainer also distinguishes finding a candidate list from choosing the original message and interpolating a known clean codeword. Existing /visuals/decoding-radius links remain valid.
 
 The guided corruption pattern has exactly one candidate at two errors and exactly two at three errors. The **Three-error example** button loads that ambiguity directly. The shared fixture is [rs-f17-k3-n8.json](../examples/rs-f17-k3-n8.json).
 
@@ -59,8 +61,8 @@ Import the **whole research repository** into Vercel and configure:
 | -------------------------------------------------------------------- | ----------------------------------- |
 | Root Directory                                                       | `web`                               |
 | Framework Preset                                                     | Vite                                |
-| Install Command                                                      | `npm ci`                            |
-| Build Command                                                        | `npm run build`                     |
+| Install Command                                                      | `pnpm install --frozen-lockfile`    |
+| Build Command                                                        | `pnpm run build`                    |
 | Output Directory                                                     | `dist`                              |
 | Node.js Version                                                      | `22.x` or a newer supported version |
 | Include source files outside of the Root Directory in the Build Step | Enabled                             |
@@ -79,6 +81,7 @@ web/
 │   ├── App.tsx                 Shared shell, navigation, and note access
 │   ├── main.tsx                Application entry and bundled fonts
 │   ├── core/math.ts            Pure small-field math and bounded enumeration
+│   ├── core/search.ts          Exact non-enumeration cases and explicit unknown results
 │   ├── core/stark.ts           Lagrange interpolation, FFT/IFFT, LDE, and FRI pair arithmetic
 │   ├── state/
 │   │   ├── model.ts            Experiment types, validation, URL format
@@ -88,7 +91,8 @@ web/
 │   ├── lessons/
 │   │   ├── registry.ts         Lesson metadata and lazy imports
 │   │   └── *.tsx               One module per experiment
-│   └── styles.css              Shared styles and responsive layout
+│   ├── styles.css              Shell, shared components, and base responsive styles
+│   └── lesson-layouts.css      Visual relationships and responsive lesson layouts
 ├── tests/                      Math, links, and primary interactions
 ├── vite.config.ts
 └── vercel.json
@@ -106,9 +110,9 @@ The notes remain ordinary Markdown in [notes/](../notes/). The notes dialog rend
 - Rate is the exact derived fraction `k/n`; the rate selector only offers attainable choices.
 - Errors `e = Δ(c,w)` and search radius `E` are separate quantities. They can be linked for the guided decoding experiment.
 - Crossing `t = floor((n−k)/2)` ends the worst-case unique-decoding guarantee. A particular received word can still have a unique candidate beyond it.
-- All candidate lists are computed from the actual RS codebook. Enumeration is capped at 10,000 codewords and 250,000 coordinate evaluations per search. Unsupported settings remain usable for encoding and distance, and offer an explicit small-example fallback for enumeration.
-- The decoding diagram draws a labeled subset of codewords; its count searches the complete supported codebook. It does not enumerate the ambient space F₁₇⁸.
-- Ball membership uses exact Hamming distances. Circular layouts preserve distance from the selected center, not all pairwise distances. Small visual padding lets markers on the boundary remain readable.
+- Candidate lists are exact when available. Enumeration is capped at 10,000 codewords and 250,000 coordinate evaluations per search. Above the cap, a known codeword at distance e determines a singleton list when e ≤ E and e + E < d. At E = 0, interpolation followed by re-evaluation determines membership exactly. Other cases show **Count unavailable**, keep the reference codeword visible, and offer a small example. Unknown counts are never displayed as zero.
+- The nearby-polynomials diagram draws a subset of codewords; its count searches the complete supported codebook. It does not enumerate the ambient space F₁₇⁸.
+- Ball membership uses exact Hamming distances. Circular layouts preserve distance from the selected center, not all pairwise distances. Integer rings show shell distances; labels appear for the center, selection, hover, and keyboard focus. The zero-radius ball uses a minimum visible marker, and contains only the center word.
 - The binary repetition code `{00000,11111}` is a separate teaching example, not a Reed–Solomon code.
 - Shared JSON fixtures encode field elements as decimal strings to support future Rust/Lean examples without JavaScript integer rounding. The current TypeScript engine accepts only its documented small fields.
 - Exhaustive checks are not Lean proofs. The fixture records that it is not formally verified.
@@ -117,25 +121,25 @@ The notes remain ordinary Markdown in [notes/](../notes/). The notes dialog rend
 
 These are future experiments, separate from the six implemented lessons. Selecting arbitrary interpolation points, understanding minimum distance through roots, and following FRI through multiple rounds are the next priorities.
 
-| Planned visual                       | What the interaction will teach                                                                                 |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Recover from any k evaluations       | Select clean evaluation points and reconstruct the message polynomial; remove one to see the remaining freedom. |
-| FRI across rounds                    | Follow linked queries through successive folds, Merkle authentication, and the final degree check.              |
-| From constraints to proximity        | Connect trace constraints, quotient polynomials, and low-degree testing in a complete STARK example.            |
-| Why d = n−k+1                        | Compare two polynomials and relate shared evaluations to the roots of their difference.                         |
-| Explore an actual decoding list      | Hold a received word fixed, grow its ball, and inspect candidate polynomials as they enter.                     |
-| Find the worst received word         | Compare a particular list with the maximum list size over all centers in a fully enumerable tiny example.       |
-| Rate versus decoding thresholds      | Compare unique decoding, Johnson, and capacity benchmarks with their assumptions and finite-length corrections. |
-| Errors versus erasures               | Compare unknown corruptions with known missing positions and explore the budget `2e+s ≤ n−k`.                   |
-| Interleaving                         | Stack polynomial evaluation tapes and inspect simultaneous column agreement.                                    |
-| Folding                              | Bundle positions of one evaluation tape and see how the alphabet and Hamming metric change.                     |
-| Roots-of-unity domains and cosets    | Traverse structured evaluation domains and inspect their algebraic relations.                                   |
-| MDS through generator-matrix columns | Select Vandermonde columns and compute their exact finite-field rank.                                           |
-| Higher-order MDS                     | Inspect intersections of several column spans using verified small examples.                                    |
-| Correlated agreement                 | Highlight shared agreement coordinates and inspect combinations of words.                                       |
-| Mutual correlated agreement (MCA)    | Vary a field parameter and inspect exceptional combinations against the exact sourced definition.               |
-| Soundness in bits                    | Convert stated error bounds into bits with explicit parameters and hypotheses.                                  |
-| Counterexample workbench             | Load Rust-generated or formally checked fixtures and inspect their words and agreement sets.                    |
+| Planned visual                 | What the interaction will teach                                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Recover from any k evaluations | Select clean evaluation points and reconstruct the message polynomial; remove one to see the remaining freedom. |
+| FRI across rounds              | Follow linked queries through successive folds, Merkle authentication, and the final degree check.              |
+| From constraints to proximity  | Connect trace constraints, quotient polynomials, and low-degree testing in a complete STARK example.            |
+| Why d = n−k+1                  | Compare two polynomials and relate shared evaluations to the roots of their difference.                         |
+
+| Find the worst received word | Compare a particular list with the maximum list size over all centers in a fully enumerable tiny example. |
+| Rate versus decoding thresholds | Compare unique decoding, Johnson, and capacity benchmarks with their assumptions and finite-length corrections. |
+| Errors versus erasures | Compare unknown corruptions with known missing positions and explore the budget `2e+s ≤ n−k`. |
+| Interleaving | Stack polynomial evaluation tapes and inspect simultaneous column agreement. |
+| Folding | Bundle positions of one evaluation tape and see how the alphabet and Hamming metric change. |
+| Roots-of-unity domains and cosets | Traverse structured evaluation domains and inspect their algebraic relations. |
+| MDS through generator-matrix columns | Select Vandermonde columns and compute their exact finite-field rank. |
+| Higher-order MDS | Inspect intersections of several column spans using verified small examples. |
+| Correlated agreement | Highlight shared agreement coordinates and inspect combinations of words. |
+| Mutual correlated agreement (MCA) | Vary a field parameter and inspect exceptional combinations against the exact sourced definition. |
+| Soundness in bits | Convert stated error bounds into bits with explicit parameters and hypotheses. |
+| Counterexample workbench | Load Rust-generated or formally checked fixtures and inspect their words and agreement sets. |
 
 For MCA, [better_codes.md](../notes/better_codes.md) flags its informal definition for verification. Implementing that lesson requires checking the precise definition and quantifiers in the selected version of [WHIR](https://eprint.iacr.org/2024/1586). A measured exceptional fraction for one example must remain distinct from a worst-case theorem.
 

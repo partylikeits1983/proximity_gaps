@@ -40,9 +40,9 @@ describe('from codes to proofs', () => {
       '16',
     ]);
     await user.click(screen.getByText('See the Lagrange interpolation'));
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Lagrange basis polynomial' }),
-      '2',
+    expect(screen.getByRole('group', { name: 'Interpolation trace' })).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: 'Lagrange trace values, position 3, value 2' }),
     );
     expect(
       Array.from(
@@ -67,6 +67,10 @@ describe('from codes to proofs', () => {
     const user = userEvent.setup();
     const { container } = start({ ...defaultExperiment(), proof: { ...DEFAULT_PROOF, stage: 3 } });
     await screen.findByText('This pair agrees.');
+    expect(
+      screen.getByRole('group', { name: 'Two queried values fold into one' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByText('Inspect the committed tables'));
     const original = screen.getByRole('group', { name: 'Original table w' });
     const folded = screen.getByRole('group', { name: 'Folded table g' });
     expect(original.querySelectorAll('.is-open')).toHaveLength(2);
