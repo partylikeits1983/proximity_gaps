@@ -39,6 +39,12 @@ export default function TapePolynomial() {
             onActive={setActive}
             onAdd={k < e.q ? () => setExample([...e.coefficients, 0], e.n) : undefined}
             onRemove={k > 1 ? () => setExample(e.coefficients.slice(0, -1), e.n) : undefined}
+            onRemoveAt={(index) =>
+              setExample(
+                e.coefficients.filter((_, i) => i !== index),
+                e.n,
+              )
+            }
             renderBelow={(value, index) => (
               <>
                 <div className="coefficient-connector" aria-hidden="true">
@@ -62,7 +68,8 @@ export default function TapePolynomial() {
             )}
           />
           <p className="stage-helper">
-            Enter an integer. Press Enter or leave the cell to wrap it modulo {e.q}.
+            Enter an integer. Press Enter or leave the cell to wrap it modulo {e.q}. Delete or
+            Backspace on an empty cell removes it.
           </p>
         </div>
         <div className="coefficient-result">

@@ -41,7 +41,7 @@ Use `pnpm run format` to format the frontend's TypeScript, styles, configuration
 | 07   | MCA                  | Grow codeword-centered balls along an affine family, count all challenges, and inspect exact same-support explanations or failures.                 |
 | 08   | From codes to proofs | Edit trace evaluations, recover the polynomial with IFFT/Lagrange interpolation, extend it with FFT, and inspect a local FRI fold.                  |
 
-**Tape editing:** Delete and Backspace edit digits normally. To remove a slot, use **Remove last coefficient**. Integer input is reduced modulo the selected field (for example, 20 becomes 3 in F₁₇); the typed digits stay visible until Enter or blur. Negative integers wrap too, and decimal integer strings are reduced exactly before conversion to JavaScript numbers. Empty or invalid drafts revert to the last valid coefficient.
+**Tape editing:** Delete and Backspace edit digits normally; pressing either key again when the cell is empty removes that slot and focuses a neighboring cell. **Remove last coefficient** is also available. At least one coefficient slot remains. Integer input is reduced modulo the selected field (for example, 20 becomes 3 in F₁₇); the typed digits stay visible until Enter or blur. Negative integers wrap too, and decimal integer strings are reduced exactly before conversion to JavaScript numbers. Empty or invalid drafts left without deleting the cell revert to the last valid coefficient on Enter or blur.
 
 The default RS example uses the prime field F₁₇, coefficients `[3, 2, 1]`, and evaluation points `0…7`. Its codeword is `[3, 6, 11, 1, 10, 4, 0, 15]`. Its minimum distance is 6 and its guaranteed unique-decoding radius is 2.
 

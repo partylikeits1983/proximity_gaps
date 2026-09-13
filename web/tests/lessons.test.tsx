@@ -56,7 +56,7 @@ describe('interactive lessons', () => {
       expect(tape.getAllByRole('spinbutton')).toHaveLength(3);
     },
   );
-  it('removes coefficient slots only through the explicit control and keeps one cell', async () => {
+  it('also removes coefficient slots through the explicit control and keeps one cell', async () => {
     const user = userEvent.setup();
     start();
     await screen.findByRole('spinbutton', { name: 'Message, coefficient 0' });
@@ -67,6 +67,56 @@ describe('interactive lessons', () => {
     expect(
       within(screen.getByRole('group', { name: 'Message' })).getAllByRole('spinbutton'),
     ).toHaveLength(1);
+  });
+  it.each(['Delete', 'Backspace'])(
+    'removes an already empty cell with %s and focuses the next coefficient',
+    async (key) => {
+      const user = userEvent.setup();
+      start();
+      const middle = await screen.findByRole('spinbutton', { name: 'Message, coefficient 1' });
+      const tape = within(screen.getByRole('group', { name: 'Message' }));
+      await user.click(middle);
+      if (key === 'Delete') await user.keyboard('{ArrowLeft}');
+      await user.keyboard(`{${key}}`);
+      expect(middle).toHaveValue(null);
+      expect(tape.getAllByRole('spinbutton')).toHaveLength(3);
+      await user.keyboard(`{${key}}`);
+      expect(tape.getAllByRole('spinbutton')).toHaveLength(2);
+      const next = tape.getByRole('spinbutton', { name: 'Message, coefficient 1' });
+      expect(next).toHaveValue(1);
+      expect(next).toHaveFocus();
+      expect(screen.getByLabelText('Polynomial: 3 + X')).toBeInTheDocument();
+      expect(JSON.parse(new URLSearchParams(window.location.search).get('s')!)).toMatchObject({
+        coefficients: [3, 1],
+      });
+      await user.clear(next);
+      await user.keyboard(`{${key}}`);
+      const remaining = tape.getByRole('spinbutton', { name: 'Message, coefficient 0' });
+      expect(remaining).toHaveValue(3);
+      expect(remaining).toHaveFocus();
+      await user.clear(remaining);
+      await user.keyboard(`{${key}}`);
+      expect(tape.getAllByRole('spinbutton')).toHaveLength(1);
+      await user.type(remaining, '20');
+      await user.keyboard('{Enter}');
+      expect(remaining).toHaveValue(3);
+    },
+  );
+  it('restores the next coefficient when deleting a blank cell with an identical neighbor', async () => {
+    const user = userEvent.setup();
+    start('tape-polynomial', { ...defaultExperiment(), coefficients: [3, 3, 1] });
+    const first = await screen.findByRole('spinbutton', { name: 'Message, coefficient 0' });
+    await user.click(first);
+    await user.keyboard('{Backspace}{Backspace}');
+    expect(first).toHaveFocus();
+    expect(first).toHaveValue(3);
+    expect(
+      within(screen.getByRole('group', { name: 'Message' })).getAllByRole('spinbutton'),
+    ).toHaveLength(2);
+    await user.clear(first);
+    await user.type(first, '35');
+    await user.keyboard('{Enter}');
+    expect(first).toHaveValue(1);
   });
   it.each([5, 7, 17])(
     'wraps integers modulo F_%s on Enter and blur, preserving the full typed value',

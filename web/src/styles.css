@@ -141,12 +141,13 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 0 9px;
+    gap: 10px;
+    margin: 0 13px;
   }
   .brand-symbol {
-    width: 40px;
-    height: 40px;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
     background: #e6efe3;
     color: var(--green-dark);
     border: 1px solid #d7e3d1;
@@ -158,19 +159,22 @@
   .brand-title {
     display: block;
     font-family: var(--serif);
-    font-size: 21px;
+    font-size: 20px;
     letter-spacing: -0.5px;
-    line-height: 1.25;
+    line-height: 1.2;
     white-space: nowrap;
   }
   .brand-subtitle {
+    display: block;
+    margin-top: 4px;
     font-size: 9px;
+    line-height: 1.25;
     letter-spacing: 2.3px;
     color: #6a7266;
     font-weight: 500;
   }
   .sidebar-intro {
-    margin: 24px 13px 28px;
+    margin: 20px 13px 28px;
     color: #6d7468;
     font-size: 12px;
     line-height: 1.7;
@@ -1814,8 +1818,8 @@
       font-size: 19px;
     }
     .brand-symbol {
-      width: 35px;
-      height: 35px;
+      width: 32px;
+      height: 32px;
     }
     .main-content {
       padding: 35px 30px 25px;
@@ -1862,14 +1866,15 @@
       padding-right: 8px;
     }
     .brand {
-      margin: 0 6px;
+      gap: 8px;
     }
     .brand-symbol {
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
+      font-size: 12px;
     }
     .brand-title {
-      font-size: 17px;
+      font-size: 18px;
     }
     .nav-item {
       font-size: 11px;

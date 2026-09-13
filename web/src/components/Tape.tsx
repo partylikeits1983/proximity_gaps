@@ -10,6 +10,7 @@ function NumberCell({
   onChange,
   onFocus,
   wrapValues = false,
+  onRemoveEmpty,
 }: {
   value: number;
   q: number;
@@ -17,6 +18,7 @@ function NumberCell({
   onChange: (n: number) => void;
   onFocus?: () => void;
   wrapValues?: boolean;
+  onRemoveEmpty?: () => void;
 }) {
   const [draft, setDraft] = useState(String(value));
   const draftSource = useRef({ value, q });
@@ -51,6 +53,25 @@ function NumberCell({
       onFocus={onFocus}
       onBlur={finishEditing}
       onKeyDown={(event) => {
+        if (
+          onRemoveEmpty &&
+          (event.key === 'Backspace' || event.key === 'Delete') &&
+          event.currentTarget.value === '' &&
+          !event.currentTarget.validity.badInput &&
+          !event.nativeEvent.isComposing &&
+          !event.repeat &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.shiftKey
+        ) {
+          event.preventDefault();
+          // React may reuse this input for the next coefficient, even if its
+          // value is identical. Do not carry the deleted cell's blank draft over.
+          setDraft(String(value));
+          onRemoveEmpty();
+          return;
+        }
         if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
           event.preventDefault();
           finishEditing();
@@ -83,6 +104,7 @@ export function Tape({
   mismatches = [],
   onAdd,
   onRemove,
+  onRemoveAt,
   wrapValues = false,
   compact = false,
   hideIndices = false,
@@ -103,6 +125,7 @@ export function Tape({
   mismatches?: readonly number[];
   onAdd?: () => void;
   onRemove?: () => void;
+  onRemoveAt?: (index: number) => void;
   wrapValues?: boolean;
   compact?: boolean;
   hideIndices?: boolean;
@@ -110,8 +133,17 @@ export function Tape({
   onSelect?: (index: number) => void;
   renderBelow?: (value: number, index: number) => ReactNode;
 }) {
+  const tapeRef = useRef<HTMLDivElement>(null);
+  const focusAfterRemoval = useRef<number | null>(null);
+  useEffect(() => {
+    const index = focusAfterRemoval.current;
+    if (index === null) return;
+    focusAfterRemoval.current = null;
+    tapeRef.current?.querySelectorAll('input')[Math.min(index, values.length - 1)]?.focus();
+  }, [values.length]);
   return (
     <div
+      ref={tapeRef}
       className={`tape-scroll ${compact ? 'tape-compact' : ''} ${points ? 'tape-with-points' : ''}`}
       role="group"
       aria-label={label}
@@ -143,6 +175,14 @@ export function Tape({
                   onChange={(n) => onChange(index, n)}
                   onFocus={() => onActive?.(index)}
                   wrapValues={wrapValues}
+                  onRemoveEmpty={
+                    onRemoveAt && values.length > 1
+                      ? () => {
+                          focusAfterRemoval.current = index;
+                          onRemoveAt(index);
+                        }
+                      : undefined
+                  }
                 />
               ) : onSelect ? (
                 <button
