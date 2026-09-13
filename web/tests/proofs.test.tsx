@@ -84,7 +84,7 @@ describe('from codes to proofs', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'FRI challenge' }), '5');
     expect(within(folded).getByLabelText('Opened at x=4: 0')).toBeInTheDocument();
     expect(container.querySelector('.katex-error')).toBeNull();
-    await user.click(screen.getByRole('button', { name: /Research notes/ }));
+    await user.click(screen.getByRole('button', { name: /Explore the definition/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Read the notes' });
     expect(within(dialog).getByRole('link', { name: /Download full note/ })).toHaveAttribute(
       'download',

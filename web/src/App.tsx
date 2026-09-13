@@ -1,19 +1,11 @@
 import { lazy, Suspense, useEffect, useState, type MouseEvent } from 'react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUpRight,
-  BookOpen,
-  Check,
-  Copy,
-  RotateCcw,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Copy, RotateCcw, X } from 'lucide-react';
 import { lessons } from './lessons/registry';
 import { useExperiment } from './state/ExperimentContext';
 import { experimentUrl, type LessonId } from './state/model';
 import { polynomialTex, SUPPORTED_FIELDS } from './core/math';
 import { MathText } from './components/Math';
+import { FurtherReading } from './components/FurtherReading';
 
 const NotesDialog = lazy(() => import('./components/NotesDialog'));
 
@@ -112,9 +104,9 @@ export default function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-rule" />
-          <button className="text-button" onClick={() => setNotesOpen(true)}>
-            <BookOpen size={15} /> Research notes <ArrowUpRight size={13} />
-          </button>
+          <a className="text-button" href="#further-reading">
+            Further reading <ArrowRight size={13} aria-hidden="true" />
+          </a>
           <span className="version-label">AN INTERACTIVE NOTEBOOK · 0.1</span>
         </div>
       </aside>
@@ -296,6 +288,7 @@ export default function App() {
               </button>
             </div>
           )}
+          <FurtherReading />
         </main>
       </div>
       {notice && (
@@ -314,7 +307,7 @@ export default function App() {
         <Suspense
           fallback={
             <div className="toast" role="status">
-              Opening the research notes…
+              Opening the definition…
             </div>
           }
         >

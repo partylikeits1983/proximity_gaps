@@ -343,7 +343,7 @@ describe('interactive lessons', () => {
     const user = userEvent.setup();
     const { container } = start();
     await screen.findByRole('spinbutton', { name: 'Message, coefficient 0' });
-    await user.click(screen.getByRole('button', { name: /Research notes/ }));
+    await user.click(screen.getByRole('button', { name: /Explore the definition/ }));
     expect(await screen.findByRole('dialog', { name: 'Read the notes' })).toHaveAttribute('open');
     expect(screen.getByRole('link', { name: /Download full note/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close notes' }));

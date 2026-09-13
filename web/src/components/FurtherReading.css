@@ -1,0 +1,75 @@
+@layer components {
+  .further-reading {
+    margin-top: 44px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 24px;
+  }
+  .further-reading-intro {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .reading-list {
+    list-style: none;
+    margin: 24px 0 0;
+    padding: 0;
+  }
+  .reading-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px 24px;
+    padding: 20px 0;
+    border-top: 1px solid var(--line);
+  }
+  .reading-list h3 {
+    font-size: 18px;
+    line-height: 1.4;
+  }
+  .reading-authors {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .reading-description {
+    margin-top: 8px;
+    max-width: 78ch;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .reading-links {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding-top: 3px;
+    color: var(--green-dark);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .reading-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .reading-links a:hover {
+    color: var(--green);
+  }
+}
+
+@layer responsive {
+  @media (max-width: 600px) {
+    .reading-list li {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .reading-links {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+  }
+}
