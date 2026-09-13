@@ -32,18 +32,13 @@ export default function TapePolynomial() {
             values={e.coefficients}
             q={e.q}
             editable
+            wrapValues
             coefficientLabels
             onChange={change}
             active={active}
             onActive={setActive}
             onAdd={k < e.q ? () => setExample([...e.coefficients, 0], e.n) : undefined}
             onRemove={k > 1 ? () => setExample(e.coefficients.slice(0, -1), e.n) : undefined}
-            onRemoveAt={(index) =>
-              setExample(
-                e.coefficients.filter((_, i) => i !== index),
-                e.n,
-              )
-            }
             renderBelow={(value, index) => (
               <>
                 <div className="coefficient-connector" aria-hidden="true">
@@ -66,7 +61,9 @@ export default function TapePolynomial() {
               </>
             )}
           />
-          <p className="stage-helper">Edit a cell; press Delete or Backspace to remove it.</p>
+          <p className="stage-helper">
+            Enter an integer. Press Enter or leave the cell to wrap it modulo {e.q}.
+          </p>
         </div>
         <div className="coefficient-result">
           <span className="micro-label">ADD THE TERMS</span>

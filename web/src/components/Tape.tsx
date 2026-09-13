@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
 import { MathText } from './Math';
+import { parseFieldInteger } from '../core/math';
 
 function NumberCell({
   value,
@@ -8,52 +9,61 @@ function NumberCell({
   label,
   onChange,
   onFocus,
-  onDelete,
+  wrapValues = false,
 }: {
   value: number;
   q: number;
   label: string;
   onChange: (n: number) => void;
   onFocus?: () => void;
-  onDelete?: () => void;
+  wrapValues?: boolean;
 }) {
   const [draft, setDraft] = useState(String(value));
-  useEffect(() => setDraft(String(value)), [value]);
-  const valid =
-    draft !== '' && Number.isInteger(Number(draft)) && Number(draft) >= 0 && Number(draft) < q;
+  const draftSource = useRef({ value, q });
+  useEffect(() => {
+    // Keep all typed digits until editing finishes so live modulo updates
+    // do not rewrite the number or move the caret mid-edit.
+    if (!wrapValues || value !== draftSource.current.value || q !== draftSource.current.q)
+      setDraft(String(value));
+    draftSource.current = { value, q };
+  }, [value, q, wrapValues]);
+  const parse = (raw: string) => {
+    if (wrapValues) return parseFieldInteger(raw, q);
+    const number = Number(raw);
+    return raw !== '' && Number.isInteger(number) && number >= 0 && number < q ? number : null;
+  };
+  const finishEditing = () => setDraft(String(parse(draft) ?? value));
   return (
     <input
       type="number"
       inputMode="numeric"
-      min={0}
-      max={q - 1}
+      min={wrapValues ? undefined : 0}
+      max={wrapValues ? undefined : q - 1}
       step={1}
       aria-label={label}
-      aria-invalid={!valid}
-      title={`A whole number from 0 to ${q - 1}`}
+      aria-invalid={parse(draft) === null}
+      title={
+        wrapValues
+          ? `An integer, reduced modulo ${q} on Enter or when you leave the cell`
+          : `A whole number from 0 to ${q - 1}`
+      }
       value={draft}
       onFocus={onFocus}
-      onBlur={() => setDraft(String(value))}
+      onBlur={finishEditing}
       onKeyDown={(event) => {
-        if (
-          onDelete &&
-          (event.key === 'Delete' || event.key === 'Backspace') &&
-          !event.nativeEvent.isComposing &&
-          !event.altKey &&
-          !event.ctrlKey &&
-          !event.metaKey &&
-          !event.shiftKey
-        ) {
+        if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
           event.preventDefault();
-          setDraft(String(value));
-          onDelete();
+          finishEditing();
         }
       }}
       onChange={(event) => {
         const raw = event.target.value;
         setDraft(raw);
-        const number = Number(raw);
-        if (raw !== '' && Number.isInteger(number) && number >= 0 && number < q) onChange(number);
+        const number = parse(raw);
+        if (number !== null) {
+          draftSource.current = { value: number, q };
+          onChange(number);
+        }
       }}
     />
   );
@@ -73,7 +83,7 @@ export function Tape({
   mismatches = [],
   onAdd,
   onRemove,
-  onRemoveAt,
+  wrapValues = false,
   compact = false,
   hideIndices = false,
   hideMismatchMarks = false,
@@ -93,25 +103,15 @@ export function Tape({
   mismatches?: readonly number[];
   onAdd?: () => void;
   onRemove?: () => void;
-  onRemoveAt?: (index: number) => void;
+  wrapValues?: boolean;
   compact?: boolean;
   hideIndices?: boolean;
   hideMismatchMarks?: boolean;
   onSelect?: (index: number) => void;
   renderBelow?: (value: number, index: number) => ReactNode;
 }) {
-  const tapeRef = useRef<HTMLDivElement>(null);
-  const focusAfterRemoval = useRef<number | null>(null);
-  useEffect(() => {
-    const index = focusAfterRemoval.current;
-    if (index === null) return;
-    focusAfterRemoval.current = null;
-    tapeRef.current?.querySelectorAll('input')[Math.min(index, values.length - 1)]?.focus();
-  }, [values.length]);
-
   return (
     <div
-      ref={tapeRef}
       className={`tape-scroll ${compact ? 'tape-compact' : ''} ${points ? 'tape-with-points' : ''}`}
       role="group"
       aria-label={label}
@@ -142,15 +142,7 @@ export function Tape({
                   label={`${label}, ${coefficientLabels ? 'coefficient' : 'position'} ${coefficientLabels ? index : index + 1}`}
                   onChange={(n) => onChange(index, n)}
                   onFocus={() => onActive?.(index)}
-                  onDelete={
-                    onRemoveAt
-                      ? () => {
-                          if (values.length <= 1) return;
-                          focusAfterRemoval.current = index;
-                          onRemoveAt(index);
-                        }
-                      : undefined
-                  }
+                  wrapValues={wrapValues}
                 />
               ) : onSelect ? (
                 <button

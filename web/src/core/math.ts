@@ -7,6 +7,14 @@ export function mod(value: number, q: number): number {
   return ((value % q) + q) % q;
 }
 
+/** Parse a decimal integer exactly, including values beyond Number's safe range. */
+export function parseFieldInteger(input: string, q: number): number | null {
+  if (!/^[+-]?\d+$/.test(input)) return null;
+  const value = BigInt(input);
+  const modulus = BigInt(q);
+  return Number(((value % modulus) + modulus) % modulus);
+}
+
 export function evaluate(coefficients: readonly number[], x: number, q: number): number {
   return coefficients.reduceRight((acc, coefficient) => mod(acc * x + coefficient, q), 0);
 }

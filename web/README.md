@@ -32,7 +32,7 @@ Use `pnpm run format` to format the frontend's TypeScript, styles, configuration
 
 | Step | Experiment           | Interactions                                                                                                                                        |
 | ---- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 01   | Tape to polynomial   | Edit coefficients, follow aligned arrows to their terms, add/delete slots, and highlight a term in the sum.                                         |
+| 01   | Tape to polynomial   | Edit integers modulo the selected field, add/remove slots with buttons, and follow each coefficient into its polynomial term.                       |
 | 02   | Build a codeword     | Change the rate or evaluation count; inspect modular evaluation arithmetic and the resulting output tape.                                           |
 | 03   | Measure errors       | Edit aligned reference/received rows; each unequal column contributes one to Δ. Inspect δ and a compact distance diagram.                           |
 | 04   | Grow a Hamming ball  | Explore all 32 binary words of length five, change the center and radius, and optionally highlight the repetition code.                             |
@@ -40,6 +40,8 @@ Use `pnpm run format` to format the frontend's TypeScript, styles, configuration
 | 06   | Interleaved RS       | Edit two to four messages; follow each polynomial into an evaluation row. Inspect column tuples and compare shared versus separate error positions. |
 | 07   | MCA                  | Grow codeword-centered balls along an affine family, count all challenges, and inspect exact same-support explanations or failures.                 |
 | 08   | From codes to proofs | Edit trace evaluations, recover the polynomial with IFFT/Lagrange interpolation, extend it with FFT, and inspect a local FRI fold.                  |
+
+**Tape editing:** Delete and Backspace edit digits normally. To remove a slot, use **Remove last coefficient**. Integer input is reduced modulo the selected field (for example, 20 becomes 3 in F₁₇); the typed digits stay visible until Enter or blur. Negative integers wrap too, and decimal integer strings are reduced exactly before conversion to JavaScript numbers. Empty or invalid drafts revert to the last valid coefficient.
 
 The default RS example uses the prime field F₁₇, coefficients `[3, 2, 1]`, and evaluation points `0…7`. Its codeword is `[3, 6, 11, 1, 10, 4, 0, 15]`. Its minimum distance is 6 and its guaranteed unique-decoding radius is 2.
 

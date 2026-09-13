@@ -37,47 +37,73 @@ describe('interactive lessons', () => {
     expect(container.querySelector('math')).not.toBeNull();
   });
   it.each(['Delete', 'Backspace'])(
-    'removes focused coefficients with %s, shifts terms, and keeps one editable cell',
+    'edits digits with %s without removing a coefficient',
     async (key) => {
       const user = userEvent.setup();
-      start('tape-polynomial', {
-        ...defaultExperiment(5),
-        coefficients: [3, 2, 1, 0, 0],
-      });
-      const middle = await screen.findByRole('spinbutton', { name: 'Message, coefficient 1' });
+      start();
+      const first = await screen.findByRole('spinbutton', { name: 'Message, coefficient 0' });
       const tape = within(screen.getByRole('group', { name: 'Message' }));
-      const values = () =>
-        tape.getAllByRole('spinbutton').map((input) => (input as HTMLInputElement).valueAsNumber);
-      expect(screen.queryByRole('button', { name: 'Add coefficient' })).toBeNull();
-
-      await user.click(middle);
-      await user.keyboard(`{${key}}`);
-      expect(values()).toEqual([3, 1, 0, 0]);
-      expect(tape.getByRole('spinbutton', { name: 'Message, coefficient 1' })).toHaveFocus();
-      expect(screen.getByLabelText('Polynomial: 3 + X')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Add coefficient' })).toBeInTheDocument();
-
-      await user.click(tape.getByRole('spinbutton', { name: 'Message, coefficient 3' }));
-      await user.keyboard(`{${key}}`);
-      expect(values()).toEqual([3, 1, 0]);
-      expect(tape.getByRole('spinbutton', { name: 'Message, coefficient 2' })).toHaveFocus();
-      await user.keyboard(`{${key}}{${key}}{${key}}`);
-      expect(values()).toEqual([3]);
-      const remaining = tape.getByRole('spinbutton', { name: 'Message, coefficient 0' });
-      expect(remaining).toHaveFocus();
-      expect(remaining).toHaveAttribute('aria-invalid', 'false');
-      expect(screen.getByLabelText('Polynomial: 3')).toBeInTheDocument();
-      expect(JSON.parse(new URLSearchParams(window.location.search).get('s')!)).toMatchObject({
-        coefficients: [3],
-        n: 5,
-        received: [3, 3, 3, 3, 3],
-      });
-
-      await user.clear(remaining);
-      await user.type(remaining, '4');
-      expect(values()).toEqual([4]);
+      await user.clear(first);
+      await user.type(first, '10');
+      await user.keyboard(key === 'Delete' ? '{ArrowLeft}{Delete}' : '{Backspace}');
+      expect(first).toHaveValue(1);
+      expect(tape.getAllByRole('spinbutton')).toHaveLength(3);
+      expect(screen.getByLabelText('Polynomial: 1 + 2X + X^{2}')).toBeInTheDocument();
+      await user.clear(first);
+      expect(first).toHaveValue(null);
+      await user.tab();
+      expect(first).toHaveValue(1);
+      expect(tape.getAllByRole('spinbutton')).toHaveLength(3);
     },
   );
+  it('removes coefficient slots only through the explicit control and keeps one cell', async () => {
+    const user = userEvent.setup();
+    start();
+    await screen.findByRole('spinbutton', { name: 'Message, coefficient 0' });
+    await user.click(screen.getByRole('button', { name: 'Remove last coefficient' }));
+    expect(screen.getByLabelText('Polynomial: 3 + 2X')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove last coefficient' }));
+    expect(screen.queryByRole('button', { name: 'Remove last coefficient' })).toBeNull();
+    expect(
+      within(screen.getByRole('group', { name: 'Message' })).getAllByRole('spinbutton'),
+    ).toHaveLength(1);
+  });
+  it.each([5, 7, 17])(
+    'wraps integers modulo F_%s on Enter and blur, preserving the full typed value',
+    async (q) => {
+      const user = userEvent.setup();
+      start('tape-polynomial', defaultExperiment(q));
+      const first = await screen.findByRole('spinbutton', { name: 'Message, coefficient 0' });
+      await user.clear(first);
+      await user.type(first, String(q * 10 + 3));
+      expect(first).toHaveValue(q * 10 + 3);
+      expect(first).toHaveAttribute('aria-invalid', 'false');
+      await user.keyboard('{Enter}');
+      expect(first).toHaveValue(3);
+      await user.clear(first);
+      await user.type(first, '-1');
+      await user.tab();
+      expect(first).toHaveValue(q - 1);
+      expect(JSON.parse(new URLSearchParams(window.location.search).get('s')!)).toMatchObject({
+        q,
+        coefficients: [q - 1, 2, 1],
+      });
+      await user.clear(first);
+      await user.type(first, String(q));
+      await user.tab();
+      expect(first).toHaveValue(0);
+    },
+  );
+  it('reduces pasted integers beyond the safe Number range without rounding them first', async () => {
+    const user = userEvent.setup();
+    start();
+    const first = await screen.findByRole('spinbutton', { name: 'Message, coefficient 0' });
+    fireEvent.change(first, { target: { value: '9007199254740993' } });
+    await user.click(first);
+    await user.keyboard('{Enter}');
+    expect(first).toHaveValue(16);
+    expect(screen.getByLabelText('Polynomial: 16 + 2X + X^{2}')).toBeInTheDocument();
+  });
   it('changes the exact rate and output length together', async () => {
     start('evaluation-codeword');
     const slider = await screen.findByRole('slider', { name: 'Evaluation points' });
